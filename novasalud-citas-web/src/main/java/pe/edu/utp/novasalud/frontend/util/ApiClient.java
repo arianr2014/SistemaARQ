@@ -95,6 +95,32 @@ public final class ApiClient {
         return list;
     }
 
+    private static final ThreadLocal<String> CORRELATION_HOLDER = new ThreadLocal<>();
+
+    public static void setCorrelationId(String correlationId) {
+        CORRELATION_HOLDER.set(correlationId);
+    }
+
+    public static String getCorrelationId() {
+        String id = CORRELATION_HOLDER.get();
+        if (id == null || id.isBlank()) {
+            return "WEB-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        }
+        return id;
+    }
+
+    public static void clearCorrelationId() {
+        CORRELATION_HOLDER.remove();
+    }
+
+    private static void applyHeaders(HttpRequest.Builder builder, String token) {
+        String activeToken = resolveToken(token);
+        if (activeToken != null && !activeToken.isBlank()) {
+            builder.header("Authorization", "Bearer " + activeToken);
+        }
+        builder.header("X-Correlation-ID", getCorrelationId());
+    }
+
     private static String resolveToken(String explicitToken) {
         if (explicitToken != null && !explicitToken.isBlank()) {
             return explicitToken.trim();
@@ -121,10 +147,7 @@ public final class ApiClient {
                         .header("Accept", "application/json")
                         .GET();
 
-                String activeToken = resolveToken(token);
-                if (activeToken != null && !activeToken.isBlank()) {
-                    builder.header("Authorization", "Bearer " + activeToken);
-                }
+                applyHeaders(builder, token);
 
                 HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
@@ -149,10 +172,7 @@ public final class ApiClient {
                         .header("Accept", "application/json")
                         .GET();
 
-                String activeToken = resolveToken(token);
-                if (activeToken != null && !activeToken.isBlank()) {
-                    builder.header("Authorization", "Bearer " + activeToken);
-                }
+                applyHeaders(builder, token);
 
                 HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
@@ -184,10 +204,7 @@ public final class ApiClient {
                         .header("Accept", "application/json")
                         .GET();
 
-                String activeToken = resolveToken(token);
-                if (activeToken != null && !activeToken.isBlank()) {
-                    builder.header("Authorization", "Bearer " + activeToken);
-                }
+                applyHeaders(builder, token);
 
                 HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
@@ -218,10 +235,7 @@ public final class ApiClient {
                         .header("Accept", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
 
-                String activeToken = resolveToken(token);
-                if (activeToken != null && !activeToken.isBlank()) {
-                    builder.header("Authorization", "Bearer " + activeToken);
-                }
+                applyHeaders(builder, token);
 
                 HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
@@ -258,10 +272,7 @@ public final class ApiClient {
                         .header("Accept", "application/json")
                         .PUT(HttpRequest.BodyPublishers.ofString(jsonBody));
 
-                String activeToken = resolveToken(token);
-                if (activeToken != null && !activeToken.isBlank()) {
-                    builder.header("Authorization", "Bearer " + activeToken);
-                }
+                applyHeaders(builder, token);
 
                 HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
@@ -293,10 +304,7 @@ public final class ApiClient {
                         .uri(URI.create(fullUrl))
                         .DELETE();
 
-                String activeToken = resolveToken(token);
-                if (activeToken != null && !activeToken.isBlank()) {
-                    builder.header("Authorization", "Bearer " + activeToken);
-                }
+                applyHeaders(builder, token);
 
                 HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {

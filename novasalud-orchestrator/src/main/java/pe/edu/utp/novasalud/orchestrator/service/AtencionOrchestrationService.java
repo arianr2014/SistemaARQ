@@ -16,7 +16,13 @@ public class AtencionOrchestrationService {
     private final FarmaciaApiClient farmaciaApiClient = new FarmaciaApiClient();
 
     public AtencionProcessResponse ejecutarProcesoAtencion(AtencionProcessRequest req, String jwtToken) {
-        String correlationId = TraceService.generateCorrelationId();
+        return ejecutarProcesoAtencion(req, jwtToken, null);
+    }
+
+    public AtencionProcessResponse ejecutarProcesoAtencion(AtencionProcessRequest req, String jwtToken, String incomingCorrelationId) {
+        String correlationId = (incomingCorrelationId != null && !incomingCorrelationId.trim().isEmpty())
+                ? incomingCorrelationId.trim()
+                : TraceService.generateCorrelationId();
         AtencionProcessResponse resp = new AtencionProcessResponse();
         resp.setCorrelationId(correlationId);
         resp.setProceso("ATENCION_MEDICA_ORQUESTRADA");
