@@ -11,6 +11,7 @@ import pe.edu.utp.novasalud.esb.config.EsbConfig;
 import pe.edu.utp.novasalud.esb.processor.AuditLogProcessor;
 import pe.edu.utp.novasalud.esb.processor.CorrelationIdProcessor;
 import pe.edu.utp.novasalud.esb.processor.EsbResponses;
+import pe.edu.utp.novasalud.esb.processor.PrescripcionContentEnricherProcessor;
 import pe.edu.utp.novasalud.esb.processor.SecurityPolicyProcessor;
 
 /**
@@ -53,6 +54,28 @@ public class EsbRoutes extends RouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant("application/json; charset=UTF-8"))
                 .setBody(constant("{\"estado\":\"UP\",\"servicio\":\"NOVASALUD-ESB\","
                         + "\"rutas\":[\"/esb/citas\",\"/esb/atencion\",\"/esb/farmacia\",\"/esb/orquestacion\"]}"));
+
+        // Ruta enriquecida de prescripciones (Content Enricher Pattern SOA EIP)
+        String endpointPrescripciones = EsbConfig.farmaciaApiUrl()
+                + "/prescripciones"
+                + "?bridgeEndpoint=true&throwExceptionOnFailure=false";
+
+        from("servlet:/farmacia/prescripciones?matchOnUriPrefix=true")
+                .routeId("ruta-farmacia-prescripciones")
+                .setProperty("esbServicio", constant("FARMACIA-API"))
+                .setProperty("esbRuta", simple("/farmacia/prescripciones${header.CamelHttpPath}"))
+                .process(AuditLogProcessor::inicio)
+                .process(new CorrelationIdProcessor())
+                .process(new SecurityPolicyProcessor())
+                .choice()
+                    .when(header(Exchange.HTTP_METHOD).isEqualTo("GET"))
+                        .to(endpointPrescripciones)
+                        .process(new PrescripcionContentEnricherProcessor())
+                    .otherwise()
+                        .to(endpointPrescripciones)
+                .end()
+                .setHeader(CorrelationIdProcessor.HEADER, exchangeProperty(CorrelationIdProcessor.HEADER))
+                .process(e -> AuditLogProcessor.fin(e, "FARMACIA-API"));
 
         ruta("citas", "CITAS-API", EsbConfig.citasApiUrl());
         ruta("atencion", "ATENCION-API", EsbConfig.atencionApiUrl());

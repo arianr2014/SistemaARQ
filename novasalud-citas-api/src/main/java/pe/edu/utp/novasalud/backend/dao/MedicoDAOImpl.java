@@ -18,7 +18,7 @@ public class MedicoDAOImpl implements MedicoDAO {
         String texto = filtro == null ? "" : filtro.trim();
 
         StringBuilder sql = new StringBuilder(
-        "SELECT m.id_medico, m.nombres, m.apellidos, m.id_especialidad, e.nombre AS especialidad, m.telefono "
+        "SELECT m.id_medico, m.nombres, m.apellidos, m.id_especialidad, e.nombre AS especialidad, m.dni, m.telefono, m.correo, m.cmp "
         + "FROM medico m "
         + "INNER JOIN especialidad e ON m.id_especialidad = e.id_especialidad "
         + "WHERE m.estado_registro = 'ACTIVO' "
@@ -49,7 +49,10 @@ public class MedicoDAOImpl implements MedicoDAO {
                     medico.setApellidos(rs.getString("apellidos"));
                     medico.setIdEspecialidad(rs.getInt("id_especialidad"));
                     medico.setNombreEspecialidad(rs.getString("especialidad"));
+                    medico.setDni(rs.getString("dni"));
                     medico.setTelefono(rs.getString("telefono"));
+                    medico.setCorreo(rs.getString("correo"));
+                    medico.setCmp(rs.getString("cmp"));
                     medicos.add(medico);
                 }
             }
@@ -60,9 +63,12 @@ public class MedicoDAOImpl implements MedicoDAO {
 
     @Override
     public Medico obtenerPorId(int idMedico) throws SQLException {
-        String sql = "SELECT id_medico, nombres, apellidos, id_especialidad, telefono "
-        + "FROM medico "
-        + "WHERE id_medico = ? AND estado_registro = 'ACTIVO'";
+        String sql = "SELECT m.id_medico, m.nombres, m.apellidos, m.id_especialidad, "
+        + "e.nombre AS especialidad, m.dni, m.telefono, m.correo, m.cmp, "
+        + "m.duracion_cita_minutos, m.tolerancia_minutos, m.max_citas_dia, m.consultorio "
+        + "FROM medico m "
+        + "LEFT JOIN especialidad e ON m.id_especialidad = e.id_especialidad "
+        + "WHERE m.id_medico = ? AND m.estado_registro = 'ACTIVO'";
 
         try (Connection connection = ConexionDB.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -71,14 +77,21 @@ public class MedicoDAOImpl implements MedicoDAO {
 
             try (ResultSet rs = statement.executeQuery()) {
                 if (rs.next()) {
-                    return new Medico(
-                            rs.getInt("id_medico"),
-                            rs.getString("nombres"),
-                            rs.getString("apellidos"),
-                            rs.getInt("id_especialidad"),
-                            null,
-                            rs.getString("telefono")
-                    );
+                    Medico medico = new Medico();
+                    medico.setIdMedico(rs.getInt("id_medico"));
+                    medico.setNombres(rs.getString("nombres"));
+                    medico.setApellidos(rs.getString("apellidos"));
+                    medico.setIdEspecialidad(rs.getInt("id_especialidad"));
+                    medico.setNombreEspecialidad(rs.getString("especialidad"));
+                    medico.setDni(rs.getString("dni"));
+                    medico.setTelefono(rs.getString("telefono"));
+                    medico.setCorreo(rs.getString("correo"));
+                    medico.setCmp(rs.getString("cmp"));
+                    medico.setDuracionCitaMinutos(rs.getInt("duracion_cita_minutos"));
+                    medico.setToleranciaMinutos(rs.getInt("tolerancia_minutos"));
+                    medico.setMaxCitasDia(rs.getInt("max_citas_dia"));
+                    medico.setConsultorio(rs.getString("consultorio"));
+                    return medico;
                 }
             }
         }

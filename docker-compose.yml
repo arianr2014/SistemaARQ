@@ -74,13 +74,13 @@ services:
     build: { context: ., args: { MODULE: novasalud-orchestrator } }
     container_name: novasalud-orchestrator
     environment:
-      CITAS_API_URL: http://citas-api:8080/novasalud-citas-api/api
-      ATENCION_API_URL: http://atencion-api:8080/novasalud-atencion-api/api
-      FARMACIA_API_URL: http://farmacia-api:8080/novasalud-farmacia-api/api
+      CITAS_API_URL: http://esb:8080/novasalud-esb/esb/citas
+      ATENCION_API_URL: http://esb:8080/novasalud-esb/esb/atencion
+      FARMACIA_API_URL: http://esb:8080/novasalud-esb/esb/farmacia
       NOVASALUD_JWT_SECRET: *jwt-secret
       TZ: America/Lima
     ports: ["8083:8080"]
-    depends_on: [citas-api, atencion-api, farmacia-api]
+    depends_on: [citas-api, atencion-api, farmacia-api, esb]
 
   # Enterprise Service Bus (Apache Camel): punto central de integración.
   # Expone /esb/citas, /esb/atencion, /esb/farmacia y /esb/orquestacion.
@@ -95,21 +95,21 @@ services:
       NOVASALUD_JWT_SECRET: *jwt-secret
       TZ: America/Lima
     ports: ["8086:8080"]
-    depends_on: [citas-api, atencion-api, farmacia-api, orchestrator]
+    depends_on: [citas-api, atencion-api, farmacia-api]
 
   citas-web:
     build: { context: ., args: { MODULE: novasalud-citas-web } }
     container_name: novasalud-citas-web
     environment: { TZ: America/Lima }
     ports: ["8080:8080"]
-    depends_on: [citas-api, atencion-api, orchestrator]
+    depends_on: [citas-api, atencion-api, orchestrator, esb]
 
   farmacia-web:
     build: { context: ., args: { MODULE: novasalud-farmacia-web } }
     container_name: novasalud-farmacia-web
     environment: { TZ: America/Lima }
     ports: ["8081:8080"]
-    depends_on: [farmacia-api]
+    depends_on: [farmacia-api, esb]
 
 volumes:
   mysql-data:

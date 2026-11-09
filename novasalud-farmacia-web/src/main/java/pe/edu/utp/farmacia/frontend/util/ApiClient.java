@@ -93,6 +93,14 @@ public final class ApiClient {
         return JwtTokenContext.getToken();
     }
 
+    private static void applyHeaders(HttpRequest.Builder builder, String token) {
+        String jwt = resolveToken(token);
+        if (jwt != null && !jwt.isBlank()) {
+            builder.header("Authorization", "Bearer " + jwt);
+        }
+        builder.header("X-Correlation-ID", "FARMACIAWEB-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+    }
+
     public static ApiResponse get(String endpointPath, String token) throws Exception {
         String fullUrl = getBaseUrl() + (endpointPath.startsWith("/") ? endpointPath : "/" + endpointPath);
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -100,10 +108,7 @@ public final class ApiClient {
                 .header("Accept", "application/json")
                 .GET();
 
-        String jwt = resolveToken(token);
-        if (jwt != null && !jwt.isBlank()) {
-            builder.header("Authorization", "Bearer " + jwt);
-        }
+        applyHeaders(builder, token);
 
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         return new ApiResponse(response.statusCode(), response.body());
@@ -117,10 +122,7 @@ public final class ApiClient {
                 .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload != null ? jsonPayload : ""));
 
-        String jwt = resolveToken(token);
-        if (jwt != null && !jwt.isBlank()) {
-            builder.header("Authorization", "Bearer " + jwt);
-        }
+        applyHeaders(builder, token);
 
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         return new ApiResponse(response.statusCode(), response.body());
@@ -134,10 +136,7 @@ public final class ApiClient {
                 .header("Accept", "application/json")
                 .PUT(HttpRequest.BodyPublishers.ofString(jsonPayload != null ? jsonPayload : ""));
 
-        String jwt = resolveToken(token);
-        if (jwt != null && !jwt.isBlank()) {
-            builder.header("Authorization", "Bearer " + jwt);
-        }
+        applyHeaders(builder, token);
 
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         return new ApiResponse(response.statusCode(), response.body());
@@ -150,10 +149,7 @@ public final class ApiClient {
                 .header("Accept", "application/json")
                 .DELETE();
 
-        String jwt = resolveToken(token);
-        if (jwt != null && !jwt.isBlank()) {
-            builder.header("Authorization", "Bearer " + jwt);
-        }
+        applyHeaders(builder, token);
 
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         return new ApiResponse(response.statusCode(), response.body());

@@ -27,13 +27,20 @@ public class AtencionOrchestrationResource {
                     .build();
         }
 
-        AtencionProcessResponse result = orchestrationService.ejecutarProcesoAtencion(req, authHeader);
+        String incomingCorrelationId = headers.getHeaderString("X-Correlation-ID");
+        AtencionProcessResponse result = orchestrationService.ejecutarProcesoAtencion(req, authHeader, incomingCorrelationId);
         if (!result.isSuccess()) {
             if ("ERROR_CITA_NOT_FOUND".equalsIgnoreCase(result.getEstado())) {
-                return Response.status(Response.Status.NOT_FOUND).entity(result).build();
+                return Response.status(Response.Status.NOT_FOUND)
+                        .header("X-Correlation-ID", result.getCorrelationId())
+                        .entity(result).build();
             }
-            return Response.status(Response.Status.BAD_REQUEST).entity(result).build();
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .header("X-Correlation-ID", result.getCorrelationId())
+                    .entity(result).build();
         }
-        return Response.ok(result).build();
+        return Response.ok(result)
+                .header("X-Correlation-ID", result.getCorrelationId())
+                .build();
     }
 }
