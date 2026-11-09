@@ -53,6 +53,34 @@ public class AtencionMedicaResource {
         }
     }
 
+    @GET
+    @Path("/pendientes-farmacia")
+    public Response listarPendientesFarmacia() {
+        try {
+            List<AtencionMedica> lista = atencionService.listarPendientesEnvioFarmacia();
+            return Response.ok(lista).build();
+        } catch (Exception ex) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ex.getMessage()).build();
+        }
+    }
+
+    @PUT
+    @Path("/{idAtencion}/estado-farmacia")
+    public Response actualizarEstadoFarmacia(@PathParam("idAtencion") int idAtencion,
+                                            @QueryParam("estado") String estado) {
+        try {
+            boolean actualizado = atencionService.actualizarEstadoEnvioFarmacia(idAtencion, estado);
+            if (!actualizado) {
+                return Response.status(Response.Status.NOT_FOUND).entity("{\"error\":\"Atención no encontrada\"}").build();
+            }
+            return Response.ok("{\"mensaje\":\"Estado de farmacia actualizado exitosamente\"}").build();
+        } catch (IllegalArgumentException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ex.getMessage()).build();
+        } catch (Exception ex) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ex.getMessage()).build();
+        }
+    }
+
     @POST
     public Response guardar(@QueryParam("idMedicoSesion") @DefaultValue("0") int idMedicoSesion,
                             @QueryParam("marcarAtendida") @DefaultValue("true") boolean marcarAtendida,

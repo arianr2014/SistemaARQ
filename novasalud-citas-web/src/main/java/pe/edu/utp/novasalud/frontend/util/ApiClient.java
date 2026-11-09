@@ -23,12 +23,14 @@ public final class ApiClient {
     private static final String DEFAULT_CITAS_URL = "http://localhost:8080/novasalud-citas-api/api";
     private static final String DEFAULT_ATENCION_URL = "http://localhost:8082/novasalud-atencion-api/api";
     private static final String DEFAULT_ORCHESTRATOR_URL = "http://localhost:8083/novasalud-orchestrator/api";
+    private static final String DEFAULT_FARMACIA_URL = "http://localhost:8085/novasalud-farmacia-api/api";
 
     private static final String CONFIG_FILE = "api.properties";
     
     private static String citasApiUrl = DEFAULT_CITAS_URL;
     private static String atencionApiUrl = DEFAULT_ATENCION_URL;
     private static String orchestratorApiUrl = DEFAULT_ORCHESTRATOR_URL;
+    private static String farmaciaApiUrl = DEFAULT_FARMACIA_URL;
 
     static {
         loadConfig();
@@ -48,6 +50,9 @@ public final class ApiClient {
 
                 String orchestrator = props.getProperty("orchestrator.api.url");
                 if (orchestrator != null && !orchestrator.isBlank()) orchestratorApiUrl = orchestrator.trim().replaceAll("/+$", "");
+
+                String farmacia = props.getProperty("farmacia.api.url");
+                if (farmacia != null && !farmacia.isBlank()) farmaciaApiUrl = farmacia.trim().replaceAll("/+$", "");
             }
         } catch (Exception ignored) {
         }
@@ -68,6 +73,9 @@ public final class ApiClient {
         }
         if (path.startsWith("/orquestacion")) {
             return orchestratorApiUrl;
+        }
+        if (path.startsWith("/medicamentos") || path.startsWith("/farmacia")) {
+            return farmaciaApiUrl;
         }
         return citasApiUrl;
     }

@@ -18,6 +18,10 @@ public class MedicamentoService {
         return dao.listar();
     }
 
+    public List<Medicamento> buscar(String criterio) throws SQLException {
+        return dao.buscar(criterio);
+    }
+
     public Medicamento obtenerPorId(int id) throws SQLException {
         return dao.obtenerPorId(id);
     }

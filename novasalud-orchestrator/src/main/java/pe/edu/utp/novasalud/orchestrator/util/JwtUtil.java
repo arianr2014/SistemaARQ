@@ -55,4 +55,15 @@ public final class JwtUtil {
 
         return DEFAULT_SECRET;
     }
+
+    public static String generarTokenSistema() {
+        return Jwts.builder()
+                .setSubject("sistema-orquestador")
+                .claim("rol", "ADMINISTRADOR")
+                .claim("origen", "orchestrator-resilience-scheduler")
+                .setIssuedAt(new java.util.Date())
+                .setExpiration(new java.util.Date(System.currentTimeMillis() + 86400000L))
+                .signWith(SIGNING_KEY)
+                .compact();
+    }
 }

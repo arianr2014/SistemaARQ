@@ -4,6 +4,7 @@ import pe.edu.utp.farmacia.model.Medicamento;
 import pe.edu.utp.farmacia.util.ConexionDB;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -21,6 +22,39 @@ public class MedicamentoDAOImpl implements MedicamentoDAO {
              ResultSet rs = cs.executeQuery()) {
             while (rs.next()) {
                 lista.add(mapearResultSet(rs));
+            }
+        }
+        return lista;
+    }
+
+    @Override
+    public List<Medicamento> buscar(String criterio) throws SQLException {
+        if (criterio == null || criterio.isBlank()) {
+            return listar();
+        }
+        List<Medicamento> lista = new ArrayList<>();
+        String sql = "SELECT m.id_medicamento, m.codigo, m.nombre, m.principio_activo, m.concentracion, "
+                   + "m.forma_farmaceutica, m.presentacion, m.id_categoria, c.nombre AS nombre_categoria, "
+                   + "m.precio_venta, m.requiere_receta, m.usuario_registro, m.fecha_registro, "
+                   + "m.usuario_actualizacion, m.fecha_actualizacion, m.estado_registro "
+                   + "FROM medicamento m "
+                   + "LEFT JOIN categoria_medicamento c ON m.id_categoria = c.id_categoria "
+                   + "WHERE m.estado_registro = 'ACTIVO' AND ("
+                   + "  LOWER(m.nombre) LIKE LOWER(?) OR "
+                   + "  LOWER(m.principio_activo) LIKE LOWER(?) OR "
+                   + "  LOWER(m.codigo) LIKE LOWER(?)"
+                   + ") ORDER BY m.nombre ASC LIMIT 50";
+
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            String patron = "%" + criterio.trim() + "%";
+            ps.setString(1, patron);
+            ps.setString(2, patron);
+            ps.setString(3, patron);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearResultSet(rs));
+                }
             }
         }
         return lista;

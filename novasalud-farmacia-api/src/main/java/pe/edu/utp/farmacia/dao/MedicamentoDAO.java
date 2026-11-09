@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface MedicamentoDAO {
     List<Medicamento> listar() throws SQLException;
+    List<Medicamento> buscar(String criterio) throws SQLException;
     Medicamento obtenerPorId(int id) throws SQLException;
     int registrar(Medicamento m, String usuarioRegistro) throws SQLException;
     void actualizar(Medicamento m, String usuarioActualizacion) throws SQLException;

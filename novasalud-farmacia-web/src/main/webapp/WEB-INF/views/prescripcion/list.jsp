@@ -51,6 +51,18 @@
                         <button onclick="verDetallePrescripcion('${p.idPrescripcion}', '${p.codigoPrescripcion}', '${p.nombreMedico}', '${p.numeroColegiaturaMedico}', '${p.nombrePaciente}', '${p.dniPaciente}', '${p.diagnostico}', '${p.fechaEmision}')" class="btn btn-secondary btn-sm">
                             <i class="fa-solid fa-file-medical"></i> Ver Receta
                         </button>
+                        <div id="detalles-${p.idPrescripcion}" style="display:none;">
+                            <c:forEach items="${p.detalles}" var="d">
+                                <div class="item-med" 
+                                     data-nombre="${d.nombreMedicamento}" 
+                                     data-dosis="${d.dosis}" 
+                                     data-frecuencia="${d.frecuencia}" 
+                                     data-duracion="${d.duracion}" 
+                                     data-cantidad="${d.cantidad}" 
+                                     data-indicaciones="${d.indicaciones}">
+                                </div>
+                            </c:forEach>
+                        </div>
                     </td>
                 </tr>
             </c:forEach>
@@ -78,6 +90,25 @@
                 <div id="viewDiagnostico" style="background: #ffffff; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; font-size: 14px; margin-top: 4px; color: #1e293b;"></div>
             </div>
 
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;"><i class="fa-solid fa-pills" style="color: #10b981;"></i> Medicamentos Prescritos</label>
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-top: 4px;">
+                    <table class="data-table" style="margin: 0; font-size: 13px; width: 100%;">
+                        <thead style="background: #f8fafc;">
+                            <tr>
+                                <th style="padding: 8px 12px;">Medicamento</th>
+                                <th style="padding: 8px 12px;">Dosis</th>
+                                <th style="padding: 8px 12px;">Frecuencia</th>
+                                <th style="padding: 8px 12px;">Duración</th>
+                                <th style="padding: 8px 12px; text-align: center;">Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewMedicamentosBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px; border-radius: 6px; color: #065f46; font-size: 13px;">
                 <i class="fa-solid fa-circle-check"></i> Prescripción activa verificada por el departamento farmacéutico de NovaSalud.
             </div>
@@ -97,6 +128,28 @@
         document.getElementById('viewCodigo').innerText = codigo || ('PRES-2026-000' + id);
         document.getElementById('viewFecha').innerText = fecha;
         document.getElementById('viewDiagnostico').innerText = diagnostico;
+
+        var tbody = document.getElementById('viewMedicamentosBody');
+        tbody.innerHTML = '';
+        var container = document.getElementById('detalles-' + id);
+        var items = container ? container.querySelectorAll('.item-med') : [];
+
+        if (items && items.length > 0) {
+            items.forEach(function(item) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td style="padding: 8px 12px; font-weight: 600;">' + (item.getAttribute('data-nombre') || '-') + '</td>' +
+                               '<td style="padding: 8px 12px;">' + (item.getAttribute('data-dosis') || '-') + '</td>' +
+                               '<td style="padding: 8px 12px;">' + (item.getAttribute('data-frecuencia') || '-') + '</td>' +
+                               '<td style="padding: 8px 12px;">' + (item.getAttribute('data-duracion') || '-') + '</td>' +
+                               '<td style="padding: 8px 12px; text-align: center;"><span class="badge badge-success">' + (item.getAttribute('data-cantidad') || '1') + '</span></td>';
+                tbody.appendChild(tr);
+            });
+        } else {
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="5" style="text-align: center; color: #64748b; padding: 12px;">No se especificaron detalles individuales de medicamentos.</td>';
+            tbody.appendChild(tr);
+        }
+
         openModal('modalVerPrescripcion');
     }
 </script>

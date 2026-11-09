@@ -35,7 +35,31 @@
 </div>
 
 <c:choose>
-    <c:when test="${param.msg == 'attended'}"><div class="alert alert-success"><i class="bi bi-check-circle"></i> <strong>Atención registrada correctamente.</strong></div></c:when>
+    <c:when test="${param.msg == 'attended'}">
+        <c:choose>
+            <c:when test="${param.estadoFarmacia == 'ENVIADO_A_FARMACIA'}">
+                <div class="alert alert-success shadow-sm d-flex align-items-center">
+                    <i class="bi bi-check-circle-fill me-2 fs-4 text-success"></i>
+                    <div>
+                        <strong>Atención clínica registrada correctamente.</strong>
+                        <div><small>La prescripción médica fue transferida a Farmacia exitosamente (Estado: <code>ENVIADO_A_FARMACIA</code>).</small></div>
+                    </div>
+                </div>
+            </c:when>
+            <c:when test="${param.estadoFarmacia == 'PENDIENTE_ENVIO_FARMACIA'}">
+                <div class="alert alert-warning shadow-sm d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-2 fs-4 text-warning"></i>
+                    <div>
+                        <strong>Atención clínica registrada con éxito.</strong>
+                        <div><small>Aviso de Resiliencia SOA: Farmacia no se encuentra disponible temporalmente. La prescripción médica quedó en estado <code>PENDIENTE_ENVIO_FARMACIA</code> y será reintentada automáticamente por el orquestador.</small></div>
+                    </div>
+                </div>
+            </c:when>
+            <c:otherwise>
+                <div class="alert alert-success"><i class="bi bi-check-circle"></i> <strong>Atención registrada correctamente.</strong></div>
+            </c:otherwise>
+        </c:choose>
+    </c:when>
     <c:when test="${param.msg == 'pago_pendiente'}"><div class="alert alert-warning"><i class="bi bi-cash-coin"></i> <strong>Pago pendiente.</strong> La cita debe estar pagada para poder atenderla.</div></c:when>
     <c:when test="${param.msg == 'invalid'}"><div class="alert alert-danger"><i class="bi bi-x-circle"></i> No se pudo procesar la acción solicitada.</div></c:when>
 </c:choose>

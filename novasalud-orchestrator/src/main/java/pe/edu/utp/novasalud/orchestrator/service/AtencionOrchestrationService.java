@@ -54,6 +54,9 @@ public class AtencionOrchestrationService {
                 return resp;
             }
 
+            boolean tienePrescripcion = req.getPrescripcion() != null && req.getPrescripcion().getMedicamentos() != null && !req.getPrescripcion().getMedicamentos().isEmpty();
+            String estadoInicialFarmacia = tienePrescripcion ? "PENDIENTE_ENVIO_FARMACIA" : "NO_APLICA";
+
             // PASO 2: Registrar Atención Médica en Atención API
             TraceService.logStep(correlationId, "REGISTRAR_ATENCION", "NOVASALUD-ATENCION-API", "CALLING", "Enviando registro de consulta médica");
             JsonObject atencionJson = atencionApiClient.registrarAtencion(
@@ -66,6 +69,7 @@ public class AtencionOrchestrationService {
                     req.getTratamiento(),
                     req.getRecetaMedica(),
                     req.getIndicaciones(),
+                    estadoInicialFarmacia,
                     jwtToken,
                     correlationId
             );
@@ -75,18 +79,20 @@ public class AtencionOrchestrationService {
             TraceService.logStep(correlationId, "REGISTRAR_ATENCION", "NOVASALUD-ATENCION-API", "SUCCESS", "Atención médica creada con ID " + idAtencion);
 
             // PASO 3: Transferir Prescripción a Farmacia API
-            if (req.getPrescripcion() != null && req.getPrescripcion().getMedicamentos() != null && !req.getPrescripcion().getMedicamentos().isEmpty()) {
+            if (tienePrescripcion) {
                 resp.setPrescripcionGenerada(true);
                 TraceService.logStep(correlationId, "TRANSFERIR_FARMACIA", "NOVASALUD-FARMACIA-API", "CALLING", "Enviando " + req.getPrescripcion().getMedicamentos().size() + " medicamentos a Farmacia");
 
-                JsonObject farmaciaResp = farmaciaApiClient.enviarPrescripcionAFarmacia(idPaciente, idAtencion, req.getPrescripcion(), jwtToken, correlationId);
+                JsonObject farmaciaResp = farmaciaApiClient.enviarPrescripcionAFarmacia(idPaciente, req.getIdMedico(), idAtencion, req.getIndicaciones(), req.getPrescripcion(), jwtToken, correlationId);
                 if (farmaciaResp != null) {
                     int ordenId = farmaciaResp.has("idPrescripcion") ? farmaciaResp.get("idPrescripcion").getAsInt() : (farmaciaResp.has("idOrden") ? farmaciaResp.get("idOrden").getAsInt() : 1);
                     resp.setFarmaciaOrdenId(ordenId);
                     resp.setEstadoFarmacia("ENVIADO_A_FARMACIA");
+                    atencionApiClient.actualizarEstadoFarmacia(idAtencion, "ENVIADO_A_FARMACIA", jwtToken, correlationId);
                     TraceService.logStep(correlationId, "TRANSFERIR_FARMACIA", "NOVASALUD-FARMACIA-API", "SUCCESS", "Orden de farmacia registrada con ID " + ordenId);
                 } else {
                     resp.setEstadoFarmacia("PENDIENTE_ENVIO_FARMACIA");
+                    atencionApiClient.actualizarEstadoFarmacia(idAtencion, "PENDIENTE_ENVIO_FARMACIA", jwtToken, correlationId);
                     TraceService.logStep(correlationId, "TRANSFERIR_FARMACIA", "NOVASALUD-FARMACIA-API", "WARNING", "Farmacia API no disponible. Prescripción marcada como PENDIENTE_ENVIO_FARMACIA para reintento diferido.");
                 }
             } else {
