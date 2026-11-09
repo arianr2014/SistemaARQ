@@ -95,3 +95,4 @@ Se completó la **Fase 4** del proyecto NovaSalud SOA, resolviendo los puntos de
   - `novasalud-esb`: SUCCESS
   - `novasalud-parent`: SUCCESS
   - **Resultado:** `BUILD SUCCESS` en 14.69 s.
+
