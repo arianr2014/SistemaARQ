@@ -1,4 +1,4 @@
-# Especificación Técnica BPMN y Matriz de Trazabilidad Proceso → Servicio SOA
+﻿﻿# Especificación Técnica BPMN y Matriz de Trazabilidad Proceso → Servicio SOA
 
 **Proyecto:** NovaSalud Clinic - Sistema Integrado de Citas y Farmacia  
 **Curso:** Arquitectura Orientada a Servicios (SOA) – Entregable APF3 (2026)  
@@ -139,74 +139,127 @@ flowchart TD
 
 ## 4. Diagrama de Secuencia SOA Ultra HD (EIP & Orquestación)
 
-El siguiente diagrama de interacción ilustra la coreografía sincrónica y asincrónica entre los componentes distribuidos, destacando la propagación de seguridad (JWT Bearer), trazabilidad (`X-Correlation-ID`) y el patrón *Content Enricher*:
+El siguiente diagrama de interacción ilustra la coreografía sincrónica y asincrónica entre los componentes distribuidos, destacando la propagación de seguridad (JWT Bearer), trazabilidad (X-Correlation-ID), orquestación clínica y el patrón *Content Enricher*:
 
-```mermaid
+> [!TIP]
+> **Artefactos Gráficos Generados en Ultra HD:**
+> - Imagen Renderizada en Ultra HD (PNG 3x): [08112026_secuencia_soa_orquestacion_eip.png](file:///d:/AREYES/UTP/2026-02/Arquitectura%20Orientada%20al%20Servicio/SistemaARQ/docs/architecture/08112026_secuencia_soa_orquestacion_eip.png)
+> - Vectorial Escalable (SVG): [08112026_secuencia_soa_orquestacion_eip.svg](file:///d:/AREYES/UTP/2026-02/Arquitectura%20Orientada%20al%20Servicio/SistemaARQ/docs/architecture/08112026_secuencia_soa_orquestacion_eip.svg)
+> - Código Fuente Mermaid: [08112026_secuencia_soa_orquestacion_eip.mmd](file:///d:/AREYES/UTP/2026-02/Arquitectura%20Orientada%20al%20Servicio/SistemaARQ/docs/architecture/08112026_secuencia_soa_orquestacion_eip.mmd)
+
+`mermaid
 sequenceDiagram
     autonumber
-    actor Medico as 👨‍⚕️ Médico Tratante
-    participant Web as 🖥️ Frontend Citas
-    participant ESB as 🚌 ESB (Camel 8086)
-    participant Orq as ⚙️ Orquestador (8083)
-    participant Citas as 🗄️ Citas API (8084)
-    participant Atencion as 🗄️ Atención API (8082)
-    participant Farmacia as 💊 Farmacia API (8085)
-    participant FarmWeb as 🖥️ Farmacia Web (8081)
 
-    %% 1. Invocación desde Frontend
-    Medico->>Web: Presiona "Guardar y Finalizar Atención"
-    Note over Web: Inyecta X-Correlation-ID: WEB-a1b2c3d4<br/>y Bearer JWT de sesión
-    Web->>ESB: POST /esb/orquestacion/orquestacion/atencion
-    ESB->>ESB: Valida JWT + Log Auditoría [ESB-...]
-    ESB->>Orq: POST /api/orquestacion/atencion (propaga X-Correlation-ID)
-
-    %% 2. Validación de Cita
-    Orq->>ESB: GET /esb/citas/citas/{idCita}
-    ESB->>Citas: GET /api/citas/{idCita}
-    Citas-->>ESB: 200 OK { idPaciente: 3, estadoPago: "PAGADO" }
-    ESB-->>Orq: 200 OK
-
-    %% 3. Registro Clínico
-    Orq->>ESB: POST /esb/atencion/atencion-medica
-    ESB->>Atencion: POST /api/atencion-medica { diagnostico, estadoFarmacia: PENDIENTE }
-    Atencion-->>ESB: 201 Created { idAtencion: 25 }
-    ESB-->>Orq: 201 Created
-
-    %% 4. Despacho a Farmacia
-    Orq->>ESB: POST /esb/farmacia/prescripciones
-    ESB->>Farmacia: POST /api/prescripciones { codigoPrescripcion: "RX-25", medicamentos: [...] }
-    
-    alt Farmacia Disponible (201 Created o 409 Duplicada)
-        Farmacia-->>ESB: 201 Created { idPrescripcion: 101 }
-        ESB-->>Orq: 201 Created
-        Orq->>ESB: PUT /esb/atencion/atencion-medica/25/estado-farmacia
-        ESB->>Atencion: PUT ... { estadoFarmacia: "ENVIADO_A_FARMACIA" }
-        Atencion-->>Orq: 200 OK
-        Orq-->>Web: 200 OK { estado: "ENVIADO_A_FARMACIA", correlationId: "WEB-a1b2c3d4" }
-        Web-->>Medico: Muestra Confirmación y Estado ENVIADO_A_FARMACIA
-    else Farmacia No Disponible (Timeout / 503)
-        Farmacia-->>ESB: Conexión rechazada / 503
-        ESB-->>Orq: 503 Service Unavailable
-        Note over Orq: Atencion queda PENDIENTE_ENVIO_FARMACIA.<br/>FarmaciaRetryListener reintentará cada 2 min.
-        Orq-->>Web: 200 OK { estado: "PENDIENTE_ENVIO_FARMACIA" }
-        Web-->>Medico: Muestra Alerta Amarilla PENDIENTE_ENVIO_FARMACIA
+    box "Capa de Presentación Web" #F1F8F4
+        actor Medico as 👨‍⚕️ Médico Tratante
+        participant Web as 🖥️ Frontend Citas (8080)
+        participant FarmWeb as 🖥️ Farmacia Web (8081)
     end
 
-    %% 5. Consulta Enriquecida en Farmacia
-    opt Químico Farmacéutico Consulta Prescripciones
-        FarmWeb->>ESB: GET /esb/farmacia/prescripciones (Bearer JWT)
-        ESB->>Farmacia: GET /api/prescripciones
-        Farmacia-->>ESB: 200 OK [ { idAtencionExterna: 25, idPacienteExterno: 3, idMedicoExterno: 1, ... } ]
-        
-        Note over ESB: Content Enricher Processor<br/>(Caché en memoria por petición)
-        ESB->>Citas: GET /api/pacientes/3 -> { nombrePaciente: "Lucía Morales", dni: "70123456" }
-        ESB->>Citas: GET /api/medicos/1 -> { nombreMedico: "Dr. Valeria Rojas", cmp: "CMP-45892" }
-        ESB->>Atencion: GET /api/atencion-medica/25 -> { diagnostico: "Faringitis Aguda" }
-        
-        ESB-->>FarmWeb: 200 OK [ Receta Enriquecida Completa ]
-        FarmWeb-->>FarmWeb: Renderiza Paciente Real, CMP Real y Diagnóstico
+    box "Capa de Integración & Orquestación SOA" #EBF3FB
+        participant ESB as 🚌 ESB Apache Camel (8086)
+        participant Orq as ⚙️ Orquestador SOA (8083)
     end
-```
+
+    box "Capa de Microservicios Backend" #FDF6EC
+        participant Citas as 🗄️ Citas API (8084)
+        participant Atencion as 🗄️ Atención API (8082)
+        participant Farmacia as 💊 Farmacia API (8085)
+    end
+
+    %% FASE 1: INVOCACIÓN DE ATENCIÓN MÉDICA
+    rect rgb(240, 248, 255)
+        note over Medico, Web: Fase 1: Finalización de Atención y Despacho de Receta
+        Medico->>+Web: 1. Presiona "Guardar y Finalizar Atención"
+        Note over Web: Inyecta encabezados HTTP:<br/>Authorization: Bearer [JWT_TOKEN]<br/>X-Correlation-ID: WEB-e8a201bf
+        Web->>+ESB: 2. POST /esb/orquestacion/orquestacion/atencion
+        Note over ESB: SecurityPolicyProcessor: Valida JWT con clave común.<br/>CorrelationIdProcessor: Propaga X-Correlation-ID.<br/>AuditLogProcessor: Registra inicio de traza SOA.
+        ESB->>+Orq: 3. POST /api/orquestacion/atencion
+    end
+
+    %% FASE 2: VALIDACIÓN DE PAGO EN CITAS API
+    rect rgb(254, 249, 231)
+        note over Orq, Citas: Fase 2: Validación de Regla de Negocio (Cita Pagada)
+        Orq->>+ESB: 4. GET /esb/citas/citas/{idCita}
+        ESB->>+Citas: 5. GET /api/citas/{idCita}
+        Citas-->>-ESB: 6. 200 OK { idCita: 40, estadoPago: "PAGADO", idPaciente: 3 }
+        ESB-->>-Orq: 7. 200 OK (Cita Pagada Verificada)
+    end
+
+    %% FASE 3: PERSISTENCIA CLÍNICA
+    rect rgb(245, 238, 248)
+        note over Orq, Atencion: Fase 3: Registro de Atención e Historia Clínica
+        Orq->>+ESB: 8. POST /esb/atencion/atencion-medica
+        Note over Orq, Atencion: Payload incluye estado inicial: PENDIENTE_ENVIO_FARMACIA
+        ESB->>+Atencion: 9. POST /api/atencion-medica { idCita: 40, diagnostico: "Faringitis" }
+        Atencion-->>-ESB: 10. 201 Created { idAtencion: 25 }
+        ESB-->>-Orq: 11. 201 Created
+    end
+
+    %% FASE 4: DESPACHO A FARMACIA Y RESILIENCIA
+    rect rgb(234, 250, 234)
+        note over Orq, Farmacia: Fase 4: Integración con Farmacia (Idempotencia y Resiliencia)
+        Orq->>+ESB: 12. POST /esb/farmacia/prescripciones
+        Note over Orq, ESB: Mensaje Canónico: RX-25, idAtencionExterna: 25, medicamentos: [...]
+        ESB->>+Farmacia: 13. POST /api/prescripciones
+
+        alt Farmacia Disponible (201 Created o 409 Duplicada)
+            Farmacia-->>ESB: 14a. 201 Created { idPrescripcion: 101, codigo: "RX-25" }
+            ESB-->>Orq: 15a. 201 Created
+            Orq->>+ESB: 16a. PUT /esb/atencion/atencion-medica/25/estado-farmacia
+            ESB->>+Atencion: 17a. PUT ... { estadoFarmacia: "ENVIADO_A_FARMACIA" }
+            Atencion-->>-ESB: 18a. 200 OK
+            ESB-->>-Orq: 19a. 200 OK
+            Orq-->>ESB: 20a. 200 OK { success: true, estado: "ENVIADO_A_FARMACIA" }
+            ESB-->>Web: 21a. 200 OK (X-Correlation-ID preservado)
+            Web-->>Medico: 22a. Muestra Banner Verde: "Atención Registrada y Receta Enviada a Farmacia"
+        else Farmacia No Disponible (503 Service Unavailable / Timeout)
+            Farmacia-->>-ESB: 14b. Conexión rechazada / 503
+            ESB-->>-Orq: 15b. 503 Servicio No Disponible
+            Note over Orq: Atencion queda persistida como PENDIENTE_ENVIO_FARMACIA.<br/>No se interrumpe la consulta del médico.
+            Orq-->>-ESB: 16b. 200 OK { success: true, estado: "PENDIENTE_ENVIO_FARMACIA" }
+            ESB-->>-Web: 17b. 200 OK (Alerta de Resiliencia)
+            Web-->>-Medico: 18b. Muestra Banner Amarillo: "Atención Guardada (Receta Pendiente de Envío)"
+            
+            note over Orq, Farmacia: Tarea Programada de Recuperación en Background
+            loop Cada 2 minutos (FarmaciaRetryListener)
+                Orq->>Atencion: Consulta atenciones con estado PENDIENTE_ENVIO_FARMACIA
+                Orq->>Farmacia: Reintenta envío de prescripción RX-25
+                Note over Orq, Farmacia: Al restablecerse Farmacia -> actualiza a ENVIADO_A_FARMACIA
+            end
+        end
+    end
+
+    %% FASE 5: CONSULTA ENRIQUECIDA (CONTENT ENRICHER EIP)
+    rect rgb(253, 237, 236)
+        note over FarmWeb, Atencion: Fase 5: Consulta Enriquecida de Recetas en Farmacia Web (Content Enricher)
+        actor QF as 🧑‍🔬 Químico Farmacéutico
+        QF->>+FarmWeb: 23. Ingresa a Pantalla de Prescripciones
+        FarmWeb->>+ESB: 24. GET /esb/farmacia/prescripciones (Authorization: Bearer)
+        ESB->>+Farmacia: 25. GET /api/prescripciones
+        Farmacia-->>-ESB: 26. 200 OK [ { idPrescripcion: 101, codigo: "RX-25", idPacienteExterno: 3, idMedicoExterno: 1, idAtencionExterna: 25 } ]
+
+        Note over ESB: PrescripcionContentEnricherProcessor:<br/>Detecta IDs externos y enriquece la respuesta (Caché local por petición)
+        
+        par Enriquecimiento de Paciente
+            ESB->>+Citas: 27. GET /api/pacientes/3
+            Citas-->>-ESB: 28. 200 OK { nombres: "Lucía", apellidos: "Morales", dni: "70123456" }
+        and Enriquecimiento de Médico y CMP
+            ESB->>+Citas: 29. GET /api/medicos/1
+            Citas-->>-ESB: 30. 200 OK { nombres: "Valeria", apellidos: "Rojas", cmp: "CMP-45892" }
+        and Enriquecimiento de Diagnóstico Clínico
+            ESB->>+Atencion: 31. GET /api/atencion-medica/25
+            Atencion-->>-ESB: 32. 200 OK { diagnostico: "Faringitis Aguda" }
+        end
+
+        Note over ESB: Calcula fechas: emisión (hoy) y vencimiento (+7 días).<br/>Compone payload enriquecido final.
+        ESB-->>-FarmWeb: 33. 200 OK [ Receta Enriquecida con Paciente Real, CMP Real y Diagnóstico ]
+        FarmWeb-->>-QF: 34. Renderiza Grilla con Datos Clínicos y Modal de Medicamentos
+        QF->>FarmWeb: 35. Valida Receta y Presiona "Dispensar"
+    end
+
+`
 
 ---
 
@@ -252,3 +305,4 @@ De acuerdo con los principios de arquitectura de Thomas Erl y los criterios de e
    - Registro unificado de endpoints a través del ESB (`/esb/health`, `/esb/citas`, `/esb/atencion`, `/esb/farmacia`, `/esb/orquestacion`).
 8. **Composabilidad (Service Composability):**
    - El proceso de atención médica es un servicio compuesto orquestado por `novasalud-orchestrator`, coordinando transacciones entre Citas, Atención y Farmacia.
+
