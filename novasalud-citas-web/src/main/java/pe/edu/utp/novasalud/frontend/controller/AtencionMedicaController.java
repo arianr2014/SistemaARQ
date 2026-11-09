@@ -41,6 +41,24 @@ public class AtencionMedicaController extends HttpServlet {
         try {
             validarDoctor(session);
             AtencionMedica atencion = leerAtencion(request);
+            atencion.setIdMedico(idMedicoSesion);
+
+            if (atencion.getIdPaciente() <= 0 || atencion.getCodigoHistoria().isBlank()) {
+                try {
+                    Cita cita = ApiClient.get("/citas/" + idCita, Cita.class);
+                    if (cita != null) {
+                        if (atencion.getIdPaciente() <= 0) {
+                            atencion.setIdPaciente(cita.getIdPaciente());
+                        }
+                        if (atencion.getCodigoHistoria().isBlank()) {
+                            atencion.setCodigoHistoria(cita.getHistoriaClinicaCodigo());
+                        }
+                    }
+                } catch (Exception ex) {
+                    AppLogger.warning(getClass(), "No se pudo autocompletar paciente desde cita: " + ex.getMessage(), ex);
+                }
+            }
+
             boolean marcarAtendida = "guardar_atender".equals(accion);
 
             if (marcarAtendida) {
@@ -134,6 +152,16 @@ public class AtencionMedicaController extends HttpServlet {
                 atencion.setIdMedico(cita.getIdMedico());
                 atencion.setIdPaciente(cita.getIdPaciente());
                 atencion.setCodigoHistoria(cita.getHistoriaClinicaCodigo());
+            } else {
+                if (atencion.getIdPaciente() <= 0) {
+                    atencion.setIdPaciente(cita.getIdPaciente());
+                }
+                if (atencion.getIdMedico() <= 0) {
+                    atencion.setIdMedico(cita.getIdMedico());
+                }
+                if (atencion.getCodigoHistoria() == null || atencion.getCodigoHistoria().isBlank()) {
+                    atencion.setCodigoHistoria(cita.getHistoriaClinicaCodigo());
+                }
             }
 
             request.setAttribute("cita", cita);
@@ -149,6 +177,8 @@ public class AtencionMedicaController extends HttpServlet {
     private AtencionMedica leerAtencion(HttpServletRequest request) {
         AtencionMedica atencion = new AtencionMedica();
         atencion.setIdCita(parseEntero(request.getParameter("idCita")));
+        atencion.setIdPaciente(parseEntero(request.getParameter("idPaciente")));
+        atencion.setIdMedico(parseEntero(request.getParameter("idMedico")));
         atencion.setMotivoConsulta(texto(request.getParameter("motivoConsulta")));
         atencion.setSintomas(texto(request.getParameter("sintomas")));
         atencion.setDiagnostico(texto(request.getParameter("diagnostico")));

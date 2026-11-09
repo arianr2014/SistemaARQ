@@ -51,6 +51,8 @@
           <form method="post" action="${pageContext.request.contextPath}/atencion-medica" class="card premium-card border-0">
             <%@ include file="/WEB-INF/views/layout/csrf-token.jspf" %>
             <input type="hidden" name="idCita" value="${cita.idCita}">
+            <input type="hidden" name="idPaciente" value="${cita.idPaciente}">
+            <input type="hidden" name="idMedico" value="${cita.idMedico}">
             <input type="hidden" name="fecha" value="${fn:escapeXml(cita.fecha)}">
             <input type="hidden" name="codigoHistoria" value="${fn:escapeXml(cita.historiaClinicaCodigo)}">
             <div class="card-body">

@@ -84,15 +84,7 @@ public final class ApiClient {
         String path = endpointPath.startsWith("/") ? endpointPath : "/" + endpointPath;
         String primaryBase = getBaseUrlForEndpoint(path);
         String primaryUrl = primaryBase + path;
-        
-        List<String> list = new ArrayList<>();
-        list.add(primaryUrl);
-
-        // Fallbacks si novasalud-citas-api monolítico aún responde en puerto 8080
-        if (!primaryBase.equals(DEFAULT_CITAS_URL)) {
-            list.add(DEFAULT_CITAS_URL + path);
-        }
-        return list;
+        return List.of(primaryUrl);
     }
 
     private static final ThreadLocal<String> CORRELATION_HOLDER = new ThreadLocal<>();
