@@ -25,16 +25,19 @@ public class AtencionApiClient {
     }
 
     public JsonObject registrarAtencion(int idCita, int idMedico, int idPaciente, String motivo, String sintomas, String diagnostico, String tratamiento, String receta, String indicaciones, String jwtToken, String correlationId) throws Exception {
-        return registrarAtencion(idCita, idMedico, idPaciente, motivo, sintomas, diagnostico, tratamiento, receta, indicaciones, "NO_APLICA", jwtToken, correlationId);
+        return registrarAtencion(idCita, idMedico, idPaciente, null, motivo, sintomas, diagnostico, tratamiento, receta, indicaciones, "NO_APLICA", jwtToken, correlationId);
     }
 
-    public JsonObject registrarAtencion(int idCita, int idMedico, int idPaciente, String motivo, String sintomas, String diagnostico, String tratamiento, String receta, String indicaciones, String estadoEnvioFarmacia, String jwtToken, String correlationId) throws Exception {
+    public JsonObject registrarAtencion(int idCita, int idMedico, int idPaciente, String codigoHistoria, String motivo, String sintomas, String diagnostico, String tratamiento, String receta, String indicaciones, String estadoEnvioFarmacia, String jwtToken, String correlationId) throws Exception {
         String url = ServiceUrlsConfig.getAtencionApiUrl() + "/atencion-medica?idMedicoSesion=" + idMedico + "&marcarAtendida=true";
         
         Map<String, Object> bodyMap = new HashMap<>();
         bodyMap.put("idCita", idCita);
         bodyMap.put("idMedico", idMedico);
         bodyMap.put("idPaciente", idPaciente);
+        if (codigoHistoria != null && !codigoHistoria.isBlank()) {
+            bodyMap.put("codigoHistoria", codigoHistoria.trim());
+        }
         bodyMap.put("motivoConsulta", motivo);
         bodyMap.put("sintomas", sintomas);
         bodyMap.put("diagnostico", diagnostico);

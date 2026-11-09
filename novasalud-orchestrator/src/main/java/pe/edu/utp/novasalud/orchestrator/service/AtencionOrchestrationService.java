@@ -45,12 +45,15 @@ public class AtencionOrchestrationService {
             }
 
             int idPaciente = citaJson.has("idPaciente") ? citaJson.get("idPaciente").getAsInt() : 0;
+            String codigoHistoria = citaJson.has("historiaClinicaCodigo") && !citaJson.get("historiaClinicaCodigo").isJsonNull()
+                    ? citaJson.get("historiaClinicaCodigo").getAsString()
+                    : (citaJson.has("pacienteDni") && !citaJson.get("pacienteDni").isJsonNull() ? citaJson.get("pacienteDni").getAsString() : null);
             String estadoCita = citaJson.has("estadoCita") ? citaJson.get("estadoCita").getAsString() : "";
             String estadoPago = citaJson.has("estadoPago") ? citaJson.get("estadoPago").getAsString() : "";
 
             resp.setIdPaciente(idPaciente);
             TraceService.logStep(correlationId, "VALIDAR_CITA", "NOVASALUD-CITAS-API", "SUCCESS", 
-                    String.format("Cita validada. Paciente: %d | Estado Cita: %s | Estado Pago: %s", idPaciente, estadoCita, estadoPago));
+                    String.format("Cita validada. Paciente: %d | Historia: %s | Estado Cita: %s | Estado Pago: %s", idPaciente, codigoHistoria, estadoCita, estadoPago));
 
             if (!"PAGADO".equalsIgnoreCase(estadoPago)) {
                 TraceService.logStep(correlationId, "VALIDAR_CITA", "NOVASALUD-CITAS-API", "FAILED", "La cita no se encuentra pagada.");
@@ -69,6 +72,7 @@ public class AtencionOrchestrationService {
                     req.getIdCita(),
                     req.getIdMedico(),
                     idPaciente,
+                    codigoHistoria,
                     req.getMotivoConsulta(),
                     req.getSintomas(),
                     req.getDiagnostico(),

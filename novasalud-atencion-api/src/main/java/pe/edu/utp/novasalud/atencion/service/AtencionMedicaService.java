@@ -43,6 +43,7 @@ public class AtencionMedicaService {
 
     public void guardar(AtencionMedica atencion, int idMedicoSesion) throws SQLException {
         validar(atencion);
+        asegurarCodigoHistoria(atencion);
         try (Connection cn = ConexionDB.getConnection()) {
             historiaDAO.asegurarExisteHistoriaClinica(cn, atencion.getIdPaciente(), atencion.getCodigoHistoria(), String.valueOf(idMedicoSesion));
             atencionDAO.guardarOActualizarConConexion(cn, atencion);
@@ -51,6 +52,7 @@ public class AtencionMedicaService {
 
     public void guardarYMarcarAtendida(AtencionMedica atencion, int idMedicoSesion) throws SQLException {
         validar(atencion);
+        asegurarCodigoHistoria(atencion);
         try (Connection cn = ConexionDB.getConnection()) {
             cn.setAutoCommit(false);
             try {
@@ -70,8 +72,23 @@ public class AtencionMedicaService {
         }
     }
 
+    private void asegurarCodigoHistoria(AtencionMedica atencion) {
+        if (atencion.getCodigoHistoria() == null || atencion.getCodigoHistoria().isBlank()) {
+            try {
+                var hc = historiaDAO.obtenerPorIdPaciente(atencion.getIdPaciente());
+                if (hc != null && hc.getCodigoHistoria() != null && !hc.getCodigoHistoria().isBlank()) {
+                    atencion.setCodigoHistoria(hc.getCodigoHistoria());
+                } else {
+                    atencion.setCodigoHistoria(String.format("HC-%08d", atencion.getIdPaciente()));
+                }
+            } catch (Exception ignored) {
+                atencion.setCodigoHistoria(String.format("HC-%08d", atencion.getIdPaciente()));
+            }
+        }
+    }
+
     private void marcarCitaComoAtendida(Connection cn, int idCita) throws SQLException {
-        String sql = "UPDATE cita SET estado_cita='ATENDIDA', usuario_actualizacion='atencion-api', fecha_actualizacion=NOW() WHERE id_cita=?";
+        String sql = "UPDATE cita SET estado='ATENDIDA', usuario_actualizacion='atencion-api', fecha_actualizacion=NOW() WHERE id_cita=?";
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setInt(1, idCita);
             ps.executeUpdate();
