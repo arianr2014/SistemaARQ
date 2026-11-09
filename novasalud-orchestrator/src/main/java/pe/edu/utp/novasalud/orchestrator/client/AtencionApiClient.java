@@ -1,6 +1,7 @@
 package pe.edu.utp.novasalud.orchestrator.client;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import pe.edu.utp.novasalud.orchestrator.config.ServiceUrlsConfig;
 
@@ -24,6 +25,10 @@ public class AtencionApiClient {
     }
 
     public JsonObject registrarAtencion(int idCita, int idMedico, int idPaciente, String motivo, String sintomas, String diagnostico, String tratamiento, String receta, String indicaciones, String jwtToken, String correlationId) throws Exception {
+        return registrarAtencion(idCita, idMedico, idPaciente, motivo, sintomas, diagnostico, tratamiento, receta, indicaciones, "NO_APLICA", jwtToken, correlationId);
+    }
+
+    public JsonObject registrarAtencion(int idCita, int idMedico, int idPaciente, String motivo, String sintomas, String diagnostico, String tratamiento, String receta, String indicaciones, String estadoEnvioFarmacia, String jwtToken, String correlationId) throws Exception {
         String url = ServiceUrlsConfig.getAtencionApiUrl() + "/atencion-medica?idMedicoSesion=" + idMedico + "&marcarAtendida=true";
         
         Map<String, Object> bodyMap = new HashMap<>();
@@ -36,6 +41,7 @@ public class AtencionApiClient {
         bodyMap.put("tratamiento", tratamiento);
         bodyMap.put("recetaMedica", receta);
         bodyMap.put("indicaciones", indicaciones);
+        bodyMap.put("estadoEnvioFarmacia", estadoEnvioFarmacia != null ? estadoEnvioFarmacia : "NO_APLICA");
 
         String jsonBody = gson.toJson(bodyMap);
 
@@ -54,5 +60,45 @@ public class AtencionApiClient {
             throw new RuntimeException("Error al registrar en Atención API. HTTP Status: " + response.statusCode() + " - Body: " + response.body());
         }
         return gson.fromJson(response.body(), JsonObject.class);
+    }
+
+    public boolean actualizarEstadoFarmacia(int idAtencion, String nuevoEstado, String jwtToken, String correlationId) {
+        try {
+            String url = ServiceUrlsConfig.getAtencionApiUrl() + "/atencion-medica/" + idAtencion + "/estado-farmacia?estado=" + nuevoEstado;
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(5))
+                    .header("Accept", "application/json")
+                    .header("Authorization", jwtToken.startsWith("Bearer ") ? jwtToken : "Bearer " + jwtToken)
+                    .header("X-Correlation-ID", correlationId)
+                    .PUT(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() >= 200 && response.statusCode() < 300;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    public JsonArray obtenerPendientesEnvioFarmacia(String jwtToken, String correlationId) {
+        try {
+            String url = ServiceUrlsConfig.getAtencionApiUrl() + "/atencion-medica/pendientes-farmacia";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(5))
+                    .header("Accept", "application/json")
+                    .header("Authorization", jwtToken.startsWith("Bearer ") ? jwtToken : "Bearer " + jwtToken)
+                    .header("X-Correlation-ID", correlationId)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return gson.fromJson(response.body(), JsonArray.class);
+            }
+        } catch (Exception ignored) {
+        }
+        return new JsonArray();
     }
 }

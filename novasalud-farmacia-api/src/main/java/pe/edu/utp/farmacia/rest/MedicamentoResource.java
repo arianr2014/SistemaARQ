@@ -16,9 +16,15 @@ public class MedicamentoResource {
     private final MedicamentoService service = new MedicamentoService();
 
     @GET
-    public Response listar() {
+    public Response listar(@QueryParam("q") String query, @QueryParam("filtro") String filtro) {
         try {
-            List<Medicamento> lista = service.listar();
+            String criterio = (query != null && !query.isBlank()) ? query : filtro;
+            List<Medicamento> lista;
+            if (criterio != null && !criterio.isBlank()) {
+                lista = service.buscar(criterio);
+            } else {
+                lista = service.listar();
+            }
             return Response.ok(lista).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

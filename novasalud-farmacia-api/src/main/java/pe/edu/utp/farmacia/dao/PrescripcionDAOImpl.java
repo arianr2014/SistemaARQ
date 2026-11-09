@@ -24,6 +24,10 @@ public class PrescripcionDAOImpl implements PrescripcionDAO {
                 lista.add(mapearResultSetPrescripcion(rs));
             }
         }
+
+        for (Prescripcion p : lista) {
+            p.setDetalles(listarDetalles(p.getIdPrescripcion()));
+        }
         return lista;
     }
 

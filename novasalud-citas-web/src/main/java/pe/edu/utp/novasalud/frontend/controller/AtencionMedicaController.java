@@ -45,39 +45,52 @@ public class AtencionMedicaController extends HttpServlet {
 
             if (marcarAtendida) {
                 // Invocar al Orquestador REST SOA para ejecutar el flujo end-to-end (Cita -> Atención -> Farmacia)
-                try {
-                    Map<String, Object> reqOrquestador = new HashMap<>();
-                    reqOrquestador.put("idCita", atencion.getIdCita());
-                    reqOrquestador.put("idMedico", idMedicoSesion);
-                    reqOrquestador.put("motivoConsulta", atencion.getMotivoConsulta());
-                    reqOrquestador.put("sintomas", atencion.getSintomas());
-                    reqOrquestador.put("diagnostico", atencion.getDiagnostico());
-                    reqOrquestador.put("tratamiento", atencion.getTratamiento());
-                    reqOrquestador.put("indicaciones", atencion.getIndicaciones());
-                    reqOrquestador.put("recetaMedica", atencion.getRecetaMedica());
-
-                    if (atencion.getRecetaMedica() != null && !atencion.getRecetaMedica().isBlank()) {
-                        List<Map<String, Object>> medList = new ArrayList<>();
-                        Map<String, Object> med = new HashMap<>();
-                        med.put("nombre", atencion.getRecetaMedica());
-                        med.put("dosis", "Según indicación médica");
-                        med.put("frecuencia", "Cada 8 horas");
-                        med.put("duracion", "3 días");
-                        med.put("cantidad", 1);
-                        medList.add(med);
-
-                        Map<String, Object> presc = new HashMap<>();
-                        presc.put("medicamentos", medList);
-                        reqOrquestador.put("prescripcion", presc);
+                // Se elimina el fallback directo a Atención API para respetar estrictamente la arquitectura SOA
+                List<Map<String, Object>> medList = extraerMedicamentosEstructurados(request);
+                if (!medList.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (Map<String, Object> m : medList) {
+                        if (sb.length() > 0) sb.append("; ");
+                        sb.append(m.get("nombre")).append(" (").append(m.get("dosis")).append(", ")
+                          .append(m.get("frecuencia")).append(", ").append(m.get("duracion"))
+                          .append(", Cant: ").append(m.get("cantidad")).append(")");
                     }
-
-                    ApiClient.post("/orquestacion/atencion", reqOrquestador, Map.class);
-                } catch (Exception exOrq) {
-                    AppLogger.error(getClass(), "Orquestador no disponible, ejecutando fallback directo a novasalud-atencion-api", exOrq);
-                    String url = "/atencion-medica?idMedicoSesion=" + idMedicoSesion + "&marcarAtendida=true";
-                    ApiClient.post(url, atencion, AtencionMedica.class);
+                    if (atencion.getRecetaMedica() != null && !atencion.getRecetaMedica().isBlank()) {
+                        sb.append(" | ").append(atencion.getRecetaMedica());
+                    }
+                    atencion.setRecetaMedica(sb.toString());
+                } else if (atencion.getRecetaMedica() != null && !atencion.getRecetaMedica().isBlank()) {
+                    Map<String, Object> med = new HashMap<>();
+                    med.put("nombre", atencion.getRecetaMedica());
+                    med.put("dosis", "Según indicación médica");
+                    med.put("frecuencia", "Cada 8 horas");
+                    med.put("duracion", "3 días");
+                    med.put("cantidad", 1);
+                    medList.add(med);
                 }
-                response.sendRedirect(request.getContextPath() + "/agenda-medico?buscar=1&fecha=" + texto(request.getParameter("fecha")) + "&msg=attended");
+
+                Map<String, Object> reqOrquestador = new HashMap<>();
+                reqOrquestador.put("idCita", atencion.getIdCita());
+                reqOrquestador.put("idMedico", idMedicoSesion);
+                reqOrquestador.put("motivoConsulta", atencion.getMotivoConsulta());
+                reqOrquestador.put("sintomas", atencion.getSintomas());
+                reqOrquestador.put("diagnostico", atencion.getDiagnostico());
+                reqOrquestador.put("tratamiento", atencion.getTratamiento());
+                reqOrquestador.put("indicaciones", atencion.getIndicaciones());
+                reqOrquestador.put("recetaMedica", atencion.getRecetaMedica());
+
+                if (!medList.isEmpty()) {
+                    Map<String, Object> presc = new HashMap<>();
+                    presc.put("medicamentos", medList);
+                    reqOrquestador.put("prescripcion", presc);
+                }
+
+                Map<?, ?> respOrq = ApiClient.post("/orquestacion/atencion", reqOrquestador, Map.class);
+                String estadoFarmacia = (respOrq != null && respOrq.get("estadoFarmacia") != null) 
+                        ? String.valueOf(respOrq.get("estadoFarmacia")) : "NO_APLICA";
+
+                response.sendRedirect(request.getContextPath() + "/agenda-medico?buscar=1&fecha=" 
+                        + texto(request.getParameter("fecha")) + "&msg=attended&estadoFarmacia=" + estadoFarmacia);
             } else {
                 String url = "/atencion-medica?idMedicoSesion=" + idMedicoSesion + "&marcarAtendida=false";
                 ApiClient.post(url, atencion, AtencionMedica.class);
@@ -85,7 +98,13 @@ public class AtencionMedicaController extends HttpServlet {
             }
         } catch (Exception ex) {
             AppLogger.error(getClass(), "Error al guardar atención médica vía REST API", ex);
-            cargarFormulario(request, response, ex.getMessage(), leerAtencion(request));
+            String errorMsg = ex.getMessage();
+            if (errorMsg != null && (errorMsg.contains("ERROR_CITA_NO_PAGADA") || errorMsg.contains("no está registrada como PAGADA"))) {
+                errorMsg = "Cita no pagada en caja: Debe registrarse el pago de la cita antes de poder finalizar la atención médica.";
+            } else if (errorMsg != null && errorMsg.contains("ERROR_CITA_NOT_FOUND")) {
+                errorMsg = "La cita médica indicada no existe en el sistema.";
+            }
+            cargarFormulario(request, response, errorMsg, leerAtencion(request));
         }
     }
 
@@ -147,6 +166,40 @@ public class AtencionMedicaController extends HttpServlet {
         if (obtenerIdMedicoSesion(session) <= 0) {
             throw new IllegalArgumentException("Su usuario no está vinculado a un médico real.");
         }
+    }
+
+    private List<Map<String, Object>> extraerMedicamentosEstructurados(HttpServletRequest request) {
+        List<Map<String, Object>> lista = new ArrayList<>();
+        String[] nombres = request.getParameterValues("medicamentoNombre");
+        if (nombres == null) nombres = request.getParameterValues("medicamentoNombre[]");
+        String[] dosis = request.getParameterValues("medicamentoDosis");
+        if (dosis == null) dosis = request.getParameterValues("medicamentoDosis[]");
+        String[] frecuencias = request.getParameterValues("medicamentoFrecuencia");
+        if (frecuencias == null) frecuencias = request.getParameterValues("medicamentoFrecuencia[]");
+        String[] duraciones = request.getParameterValues("medicamentoDuracion");
+        if (duraciones == null) duraciones = request.getParameterValues("medicamentoDuracion[]");
+        String[] cantidades = request.getParameterValues("medicamentoCantidad");
+        if (cantidades == null) cantidades = request.getParameterValues("medicamentoCantidad[]");
+
+        if (nombres != null) {
+            for (int i = 0; i < nombres.length; i++) {
+                String nombre = nombres[i] != null ? nombres[i].trim() : "";
+                if (nombre.isBlank()) continue;
+
+                Map<String, Object> med = new HashMap<>();
+                med.put("nombre", nombre);
+                med.put("dosis", (dosis != null && i < dosis.length && !dosis[i].isBlank()) ? dosis[i].trim() : "1 tableta");
+                med.put("frecuencia", (frecuencias != null && i < frecuencias.length && !frecuencias[i].isBlank()) ? frecuencias[i].trim() : "Cada 8 horas");
+                med.put("duracion", (duraciones != null && i < duraciones.length && !duraciones[i].isBlank()) ? duraciones[i].trim() : "3 días");
+                int cant = 1;
+                if (cantidades != null && i < cantidades.length) {
+                    try { cant = Integer.parseInt(cantidades[i].trim()); } catch (Exception ignored) {}
+                }
+                med.put("cantidad", cant > 0 ? cant : 1);
+                lista.add(med);
+            }
+        }
+        return lista;
     }
 
     private int obtenerIdMedicoSesion(HttpSession session) {

@@ -204,6 +204,7 @@ CREATE TABLE atencion_medica (
   tratamiento VARCHAR(700) NULL,
   receta_medica VARCHAR(700) NULL,
   indicaciones VARCHAR(700) NULL,
+  estado_envio_farmacia VARCHAR(30) NOT NULL DEFAULT 'NO_APLICA',
   fecha_atencion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   estado_registro VARCHAR(15) NOT NULL DEFAULT 'ACTIVO',
   PRIMARY KEY (id_atencion),

@@ -17,6 +17,7 @@ public class AtencionMedica {
     private String nombreMedico;
     private String especialidadNombre;
     private String nombrePaciente;
+    private String estadoEnvioFarmacia;
 
     public int getIdAtencion() { return idAtencion; }
     public void setIdAtencion(int idAtencion) { this.idAtencion = idAtencion; }
@@ -62,4 +63,7 @@ public class AtencionMedica {
 
     public String getNombrePaciente() { return nombrePaciente; }
     public void setNombrePaciente(String nombrePaciente) { this.nombrePaciente = nombrePaciente; }
+
+    public String getEstadoEnvioFarmacia() { return estadoEnvioFarmacia; }
+    public void setEstadoEnvioFarmacia(String estadoEnvioFarmacia) { this.estadoEnvioFarmacia = estadoEnvioFarmacia; }
 }

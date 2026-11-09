@@ -30,6 +30,17 @@ public class AtencionMedicaService {
         return atencionDAO.listarPorPaciente(idPaciente);
     }
 
+    public List<AtencionMedica> listarPendientesEnvioFarmacia() throws SQLException {
+        return atencionDAO.listarPendientesEnvioFarmacia();
+    }
+
+    public boolean actualizarEstadoEnvioFarmacia(int idAtencion, String estado) throws SQLException {
+        if (idAtencion <= 0 || estado == null || estado.isBlank()) {
+            throw new IllegalArgumentException("Parámetros inválidos para actualizar estado de farmacia.");
+        }
+        return atencionDAO.actualizarEstadoEnvioFarmacia(idAtencion, estado.trim().toUpperCase());
+    }
+
     public void guardar(AtencionMedica atencion, int idMedicoSesion) throws SQLException {
         validar(atencion);
         try (Connection cn = ConexionDB.getConnection()) {
