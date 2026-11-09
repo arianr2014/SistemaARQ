@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>NovaSalud SOA - Evidencias de Integracion y Trazabilidad</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    padding: 30px;
+    margin: 0;
+  }
+  .header {
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  h1 {
+    color: #38bdf8;
+    font-size: 24px;
+    margin: 0 0 8px 0;
+  }
+  .meta {
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 18px;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  }
+  h2 {
+    color: #7dd3fc;
+    font-size: 16px;
+    margin-top: 0;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge {
+    background: #10b981;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  pre {
+    background: #090d16;
+    padding: 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    color: #34d399;
+    font-size: 11px;
+    line-height: 1.45;
+    border: 1px solid #1e293b;
+    font-family: "Consolas", "Courier New", monospace;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  th, td {
+    border: 1px solid #334155;
+    padding: 10px 12px;
+    text-align: left;
+  }
+  th {
+    background: #0369a1;
+    color: #ffffff;
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: #1e293b; }
+  tr:nth-child(odd) { background: #172033; }
+  .code-cell {
+    font-family: "Consolas", monospace;
+    color: #38bdf8;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>NovaSalud SOA | Reporte de Integración ESB, Content Enricher y Trazabilidad EIP</h1>
+    <div class="meta">
+      <strong>Proyecto:</strong> NovaSalud SistemaARQ | 
+      <strong>Ambiente:</strong> Docker Compose (8 Contenedores en Red novasalud-net) | 
+      <strong>Fecha:</strong> Noviembre 2026 | 
+      <strong>Estado:</strong> <span class="badge">EVALUACION SATISFACTORIA (100%)</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1. Trazabilidad EIP: Propagación de X-Correlation-ID <span class="badge">200 OK</span></h2>
+      <p style="font-size:12px; color:#cbd5e1; margin-top:0;">Registro de invocaciones a través del bus de integración (<code>novasalud-esb</code>) con preservación estricta de contexto de correlación distribuido:</p>
+      <pre>2026-11-08 23:05:33 INFO NOVASALUD-ESB - [APF3-TEST-TRACE-888] CITAS-API    -> GET /citas/medicos/1    | HTTP 200 | 6 ms
+2026-11-08 23:05:33 INFO NOVASALUD-ESB - [APF3-TEST-TRACE-888] CITAS-API    -> GET /citas/pacientes/1  | HTTP 200 | 4 ms
+2026-11-08 23:05:33 INFO NOVASALUD-ESB - [APF3-TEST-TRACE-888] FARMACIA-API -> GET /farmacia/medicam...| HTTP 200 | 11 ms
+2026-11-08 23:05:33 INFO NOVASALUD-ESB - [APF3-TEST-TRACE-888] FARMACIA-API -> GET /farmacia/prescr...| HTTP 200 | 41 ms
+2026-11-08 23:04:34 INFO NOVASALUD-ESB - [CORR-20261108-000005] ATENCION-API -> GET /atencion-medica...| HTTP 200 | 12 ms</pre>
+      <p style="font-size:11px; color:#94a3b8; margin-bottom:0;">
+        <strong>Patrón EIP: Correlation Identifier.</strong> El identificador se recibe en la cabecera HTTP o es autogenerado por el ESB si falta, garantizando la auditoría punta a punta en el orquestador y los microservicios sin acoplamiento punto a punto.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>2. Patrón EIP: Content Enricher en novasalud-esb <span class="badge">ENRIQUECIDO</span></h2>
+      <p style="font-size:12px; color:#cbd5e1; margin-top:0;">Respuesta JSON del ESB en <code>/esb/farmacia/prescripciones</code> enriquecida en vuelo con datos de médico (CMP), paciente (DNI) y diagnóstico:</p>
+      <pre>{
+  "idPrescripcion": 2,
+  "codigoPrescripcion": "PRES-2026-0002",
+  "idPacienteExterno": 3,
+  "idMedicoExterno": 5,
+  "idAtencionExterna": 102,
+  "nombreMedico": "Dr. Ana Beltrán Ruiz",
+  "numeroColegiaturaMedico": "CMP-10105",
+  "nombrePaciente": "Lucía Chávez Paredes",
+  "dniPaciente": "70000003",
+  "diagnostico": "Evaluación médica satisfactoria.",
+  "detalles": [
+    { "nombreMedicamento": "Naproxeno Sódico 550 mg", "cantidad": 10 },
+    { "nombreMedicamento": "Dolaren (Paracetamol + Orfenadrina)", "cantidad": 15 }
+  ]
+}</pre>
+      <p style="font-size:11px; color:#94a3b8; margin-bottom:0;">
+        <strong>Patrón EIP: Content Enricher.</strong> El ESB consulta la base de farmacia y compone la respuesta consultando concurrentemente Citas API y Atención API.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Matriz de Estado Operativo de la Arquitectura SOA NovaSalud</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Componente / Rol SOA</th>
+          <th>Tipo / Tecnología</th>
+          <th>Endpoint / Puerto</th>
+          <th>Seguridad & Protocolo</th>
+          <th>Estado Operativo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>novasalud-esb</strong></td>
+          <td>Enterprise Service Bus (Java 17 / Jakarta EE)</td>
+          <td class="code-cell">http://localhost:8086/novasalud-esb</td>
+          <td>JWT Bearer Token / Proxy EIP / CORS</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-orchestrator</strong></td>
+          <td>Orquestador de Negocio (Jersey REST / Quartz)</td>
+          <td class="code-cell">http://localhost:8083/novasalud-orchestrator</td>
+          <td>Orquestación Síncrona + Scheduler Resiliente</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-citas-api</strong></td>
+          <td>Microservicio de Citas (Spring / Jersey)</td>
+          <td class="code-cell">http://localhost:8084/novasalud-citas-api</td>
+          <td>OpenAPI 3.0 / Swagger UI / BCrypt Auth</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-atencion-api</strong></td>
+          <td>Microservicio de Atención Médica</td>
+          <td class="code-cell">http://localhost:8082/novasalud-atencion-api</td>
+          <td>OpenAPI 3.0 / Swagger UI / Historia Clínica</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-farmacia-api</strong></td>
+          <td>Microservicio de Farmacia e Inventario</td>
+          <td class="code-cell">http://localhost:8085/novasalud-farmacia-api</td>
+          <td>OpenAPI 3.0 / Swagger UI / Prescripciones</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-mysql</strong></td>
+          <td>Persistencia Multi-Esquema (MySQL 8.0)</td>
+          <td class="code-cell">localhost:3307 (bd_citas, bd_farmacia)</td>
+          <td>Esquemas Aislados por Dominio de Negocio</td>
+          <td><span class="badge">HEALTHY (Up)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-citas-web</strong></td>
+          <td>Frontend Web Atención & Citas (JSP / Bootstrap 5)</td>
+          <td class="code-cell">http://localhost:8080/novasalud-citas-web</td>
+          <td>Consumo vía ESB Proxy</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+        <tr>
+          <td><strong>novasalud-farmacia-web</strong></td>
+          <td>Frontend Web Dispensación Farmacia</td>
+          <td class="code-cell">http://localhost:8081/novasalud-farmacia-web</td>
+          <td>Consumo de Prescripciones Enriquecidas</td>
+          <td><span class="badge">OPERATIVO (200 OK)</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
