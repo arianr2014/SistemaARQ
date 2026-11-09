@@ -133,7 +133,8 @@ public class AuthFilter implements Filter {
 
         if ("DOCTOR".equals(r)) {
             return requestPath.startsWith("/agenda-medico")
-                    || requestPath.startsWith("/atencion-medica");
+                    || requestPath.startsWith("/atencion-medica")
+                    || requestPath.startsWith("/catalogo-medicamentos");
         }
 
         if ("DIRECCION".equals(r)) {
