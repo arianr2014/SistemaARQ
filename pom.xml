@@ -19,6 +19,7 @@
         <module>novasalud-citas-web</module>
         <module>novasalud-farmacia-api</module>
         <module>novasalud-farmacia-web</module>
+        <module>novasalud-esb</module>
     </modules>
 
     <properties>

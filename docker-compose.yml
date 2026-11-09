@@ -82,6 +82,21 @@ services:
     ports: ["8083:8080"]
     depends_on: [citas-api, atencion-api, farmacia-api]
 
+  # Enterprise Service Bus (Apache Camel): punto central de integración.
+  # Expone /esb/citas, /esb/atencion, /esb/farmacia y /esb/orquestacion.
+  esb:
+    build: { context: ., args: { MODULE: novasalud-esb } }
+    container_name: novasalud-esb
+    environment:
+      CITAS_API_URL: http://citas-api:8080/novasalud-citas-api/api
+      ATENCION_API_URL: http://atencion-api:8080/novasalud-atencion-api/api
+      FARMACIA_API_URL: http://farmacia-api:8080/novasalud-farmacia-api/api
+      ORCHESTRATOR_API_URL: http://orchestrator:8080/novasalud-orchestrator/api
+      NOVASALUD_JWT_SECRET: *jwt-secret
+      TZ: America/Lima
+    ports: ["8086:8080"]
+    depends_on: [citas-api, atencion-api, farmacia-api, orchestrator]
+
   citas-web:
     build: { context: ., args: { MODULE: novasalud-citas-web } }
     container_name: novasalud-citas-web
