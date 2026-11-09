@@ -85,7 +85,7 @@ public class AtencionMedicaController extends HttpServlet {
                     reqOrquestador.put("prescripcion", presc);
                 }
 
-                Map<?, ?> respOrq = ApiClient.post("/orquestacion/orquestacion/atencion", reqOrquestador, Map.class);
+                Map<?, ?> respOrq = ApiClient.post("/orquestacion/atencion", reqOrquestador, Map.class);
                 String estadoFarmacia = (respOrq != null && respOrq.get("estadoFarmacia") != null) 
                         ? String.valueOf(respOrq.get("estadoFarmacia")) : "NO_APLICA";
 
