@@ -7,6 +7,7 @@ import pe.edu.utp.novasalud.atencion.util.ConexionDB;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -44,7 +45,9 @@ public class AtencionMedicaService {
     public void guardar(AtencionMedica atencion, int idMedicoSesion) throws SQLException {
         validar(atencion);
         try (Connection cn = ConexionDB.getConnection()) {
-            historiaDAO.asegurarExisteHistoriaClinica(cn, atencion.getIdPaciente(), atencion.getCodigoHistoria(), String.valueOf(idMedicoSesion));
+            completarDatosCitaSiFaltan(cn, atencion, idMedicoSesion);
+            asegurarCodigoHistoria(cn, atencion);
+            historiaDAO.asegurarExisteHistoriaClinica(cn, atencion.getIdPaciente(), atencion.getCodigoHistoria(), String.valueOf(atencion.getIdMedico()));
             atencionDAO.guardarOActualizarConConexion(cn, atencion);
         }
     }
@@ -54,7 +57,9 @@ public class AtencionMedicaService {
         try (Connection cn = ConexionDB.getConnection()) {
             cn.setAutoCommit(false);
             try {
-                historiaDAO.asegurarExisteHistoriaClinica(cn, atencion.getIdPaciente(), atencion.getCodigoHistoria(), String.valueOf(idMedicoSesion));
+                completarDatosCitaSiFaltan(cn, atencion, idMedicoSesion);
+                asegurarCodigoHistoria(cn, atencion);
+                historiaDAO.asegurarExisteHistoriaClinica(cn, atencion.getIdPaciente(), atencion.getCodigoHistoria(), String.valueOf(atencion.getIdMedico()));
                 atencionDAO.guardarOActualizarConConexion(cn, atencion);
                 
                 // Actualizar estado de la cita a ATENDIDA
@@ -70,8 +75,63 @@ public class AtencionMedicaService {
         }
     }
 
+    private void completarDatosCitaSiFaltan(Connection cn, AtencionMedica atencion, int idMedicoSesion) {
+        if (atencion.getIdMedico() <= 0 && idMedicoSesion > 0) {
+            atencion.setIdMedico(idMedicoSesion);
+        }
+        if (atencion.getIdPaciente() <= 0 || atencion.getIdMedico() <= 0) {
+            String sql = "SELECT id_paciente, id_medico FROM cita WHERE id_cita = ?";
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setInt(1, atencion.getIdCita());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        if (atencion.getIdPaciente() <= 0) {
+                            atencion.setIdPaciente(rs.getInt("id_paciente"));
+                        }
+                        if (atencion.getIdMedico() <= 0) {
+                            atencion.setIdMedico(rs.getInt("id_medico"));
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void asegurarCodigoHistoria(Connection cn, AtencionMedica atencion) {
+        if (atencion.getCodigoHistoria() == null || atencion.getCodigoHistoria().isBlank()) {
+            if (atencion.getIdPaciente() > 0) {
+                try {
+                    var hc = historiaDAO.obtenerPorIdPaciente(atencion.getIdPaciente());
+                    if (hc != null && hc.getCodigoHistoria() != null && !hc.getCodigoHistoria().isBlank()) {
+                        atencion.setCodigoHistoria(hc.getCodigoHistoria());
+                        return;
+                    }
+                } catch (Exception ignored) {}
+
+                String sql = "SELECT dni FROM paciente WHERE id_paciente = ?";
+                try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                    ps.setInt(1, atencion.getIdPaciente());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            String dni = rs.getString("dni");
+                            if (dni != null && !dni.isBlank()) {
+                                atencion.setCodigoHistoria(dni.trim());
+                                return;
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                atencion.setCodigoHistoria(String.format("HC-%08d", atencion.getIdPaciente()));
+            } else {
+                atencion.setCodigoHistoria("HC-00000000");
+            }
+        }
+    }
+
     private void marcarCitaComoAtendida(Connection cn, int idCita) throws SQLException {
-        String sql = "UPDATE cita SET estado_cita='ATENDIDA', usuario_actualizacion='atencion-api', fecha_actualizacion=NOW() WHERE id_cita=?";
+        String sql = "UPDATE cita SET estado='ATENDIDA', usuario_actualizacion='atencion-api', fecha_actualizacion=NOW() WHERE id_cita=?";
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setInt(1, idCita);
             ps.executeUpdate();

@@ -134,7 +134,7 @@ public class AtencionMedicaDAO {
 
     private void actualizarConConexion(Connection cn, AtencionMedica a) throws SQLException {
         String sql = "UPDATE atencion_medica SET motivo_consulta=?, sintomas=?, diagnostico=?, tratamiento=?, receta_medica=?, indicaciones=?, estado_envio_farmacia=COALESCE(?, estado_envio_farmacia), fecha_atencion=NOW() "
-                + "WHERE id_atencion=? AND id_cita=? AND id_medico=? AND estado_registro='ACTIVO'";
+                + "WHERE id_atencion=? AND id_cita=? AND estado_registro='ACTIVO'";
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setString(1, a.getMotivoConsulta());
             ps.setString(2, a.getSintomas());
@@ -145,7 +145,6 @@ public class AtencionMedicaDAO {
             ps.setString(7, a.getEstadoEnvioFarmacia());
             ps.setInt(8, a.getIdAtencion());
             ps.setInt(9, a.getIdCita());
-            ps.setInt(10, a.getIdMedico());
             ps.executeUpdate();
         }
     }

@@ -101,6 +101,8 @@ services:
     build: { context: ., args: { MODULE: novasalud-citas-web } }
     container_name: novasalud-citas-web
     environment: { TZ: America/Lima }
+    volumes:
+      - ./docker/config/novasalud-citas-web/api.properties:/usr/local/tomcat/webapps/novasalud-citas-web/WEB-INF/classes/api.properties:ro
     ports: ["8080:8080"]
     depends_on: [citas-api, atencion-api, orchestrator, esb]
 
