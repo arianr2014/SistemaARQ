@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import pe.edu.utp.farmacia.frontend.model.LoteMedicamento;
 import pe.edu.utp.farmacia.frontend.model.Medicamento;
+import pe.edu.utp.farmacia.frontend.model.Prescripcion;
 import pe.edu.utp.farmacia.frontend.model.UsuarioFarmacia;
 import pe.edu.utp.farmacia.frontend.model.Venta;
 import pe.edu.utp.farmacia.frontend.util.ApiClient;
@@ -58,6 +59,22 @@ public class VentaController extends HttpServlet {
         }
 
         if ("pos".equals(mode)) {
+            // Check if loading from a prescription
+            String fromPrescripcion = request.getParameter("fromPrescripcion");
+            if (fromPrescripcion != null && !fromPrescripcion.isBlank()) {
+                try {
+                    int idPrescripcion = Integer.parseInt(fromPrescripcion);
+                    ApiClient.ApiResponse presResp = ApiClient.get("/prescripciones/" + idPrescripcion, token);
+                    if (presResp.getStatusCode() == 200) {
+                        Prescripcion prescripcion = gson.fromJson(presResp.getBody(), Prescripcion.class);
+                        request.setAttribute("prescripcionPreload", prescripcion);
+                        request.setAttribute("prescripcionPreloadJson", presResp.getBody());
+                    }
+                } catch (Exception e) {
+                    AppLogger.error("Error precargando prescripción id=" + fromPrescripcion + ": " + e.getMessage(), e);
+                }
+            }
+
             // Load available lotes and medicamentos for POS billing
             try {
                 ApiClient.ApiResponse medResp = ApiClient.get("/medicamentos", token);

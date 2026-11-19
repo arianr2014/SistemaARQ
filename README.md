@@ -284,3 +284,26 @@ Una vez desplegados los módulos, puedes acceder a través de tu navegador web:
   👉 `http://localhost:8080/novasalud-citas-api/swagger`
 * **Endpoint del Orquestador SOA:**  
   👉 `http://localhost:8083/novasalud-orchestrator/api/orquestacion/atencion`
+
+
+1. Portal de Citas Médicas (novasalud-citas-web)
+
+🔗 URL: http://localhost:8080/novasalud-citas-web/
+🔑 Contraseña universal para todos los usuarios: 123456
+
+Rol	Usuario	Contraseña	Uso sugerido
+Administrador General	administrador	123456	Gestión completa de catálogos y usuarios.
+Médico General	doctor	123456	Atención de consultas y prescripción médica.
+Médica Especialista	valeria.rojas	123456	Dra. Valeria Rojas (Medicina General).
+Recepcionista (Mañana)	recepcionista1	123456	Agendamiento y registro de pacientes.
+Recepcionista (Tarde)	recepcionista2	123456	Agendamiento de citas.
+Cajero	cajero1	123456	Cobro de citas médicas en caja.
+2. Portal de Farmacia (novasalud-farmacia-web)
+
+🔗 URL: http://localhost:8081/novasalud-farmacia-web/
+🔑 Contraseña universal para farmacia: Farmacia2026*
+
+Rol	Usuario	Contraseña	Uso sugerido
+admin Farmacia	admin	Farmacia2026*	Gestión de inventario, proveedores y lotes.
+Químico Farmacéutico	qf_martinez	Farmacia2026*	Revisión y dispensación de recetas médicas.
+Técnico / Cajero	cajero01	Farmacia2026*

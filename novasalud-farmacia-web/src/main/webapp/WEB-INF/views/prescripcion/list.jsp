@@ -48,9 +48,14 @@
                         </c:choose>
                     </td>
                     <td style="text-align: center;">
-                        <button onclick="verDetallePrescripcion('${p.idPrescripcion}', '${p.codigoPrescripcion}', '${p.nombreMedico}', '${p.numeroColegiaturaMedico}', '${p.nombrePaciente}', '${p.dniPaciente}', '${p.diagnostico}', '${p.fechaEmision}')" class="btn btn-secondary btn-sm">
+                        <button onclick="verDetallePrescripcion('${p.idPrescripcion}', '${p.codigoPrescripcion}', '${p.nombreMedico}', '${p.numeroColegiaturaMedico}', '${p.nombrePaciente}', '${p.dniPaciente}', '${p.diagnostico}', '${p.fechaEmision}', '${p.estado}')" class="btn btn-secondary btn-sm">
                             <i class="fa-solid fa-file-medical"></i> Ver Receta
                         </button>
+                        <c:if test="${p.estado != 'ATENDIDA'}">
+                            <a href="${pageContext.request.contextPath}/ventas?mode=pos&fromPrescripcion=${p.idPrescripcion}" class="btn btn-primary btn-sm" style="margin-left: 4px;" title="Cargar y despachar en POS">
+                                <i class="fa-solid fa-cash-register"></i> Despachar
+                            </a>
+                        </c:if>
                         <div id="detalles-${p.idPrescripcion}" style="display:none;">
                             <c:forEach items="${p.detalles}" var="d">
                                 <div class="item-med" 
@@ -113,14 +118,20 @@
                 <i class="fa-solid fa-circle-check"></i> Prescripción activa verificada por el departamento farmacéutico de NovaSalud.
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
             <button type="button" onclick="closeModal('modalVerPrescripcion')" class="btn btn-secondary">Cerrar</button>
+            <button type="button" id="btnDespacharModal" onclick="despacharEnPOS()" class="btn btn-primary">
+                <i class="fa-solid fa-cash-register"></i> Despachar en POS
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-    function verDetallePrescripcion(id, codigo, medico, cmp, paciente, dni, diagnostico, fecha) {
+    let currentPrescripcionId = null;
+
+    function verDetallePrescripcion(id, codigo, medico, cmp, paciente, dni, diagnostico, fecha, estado) {
+        currentPrescripcionId = id;
         document.getElementById('viewMedico').innerText = medico;
         document.getElementById('viewCmp').innerText = cmp;
         document.getElementById('viewPaciente').innerText = paciente;
@@ -128,6 +139,19 @@
         document.getElementById('viewCodigo').innerText = codigo || ('PRES-2026-000' + id);
         document.getElementById('viewFecha').innerText = fecha;
         document.getElementById('viewDiagnostico').innerText = diagnostico;
+
+        const btnDespachar = document.getElementById('btnDespacharModal');
+        if (btnDespachar) {
+            if (estado === 'ATENDIDA') {
+                btnDespachar.disabled = true;
+                btnDespachar.innerHTML = '<i class="fa-solid fa-check"></i> Ya Atendida';
+                btnDespachar.className = 'btn btn-secondary';
+            } else {
+                btnDespachar.disabled = false;
+                btnDespachar.innerHTML = '<i class="fa-solid fa-cash-register"></i> Despachar en POS';
+                btnDespachar.className = 'btn btn-primary';
+            }
+        }
 
         var tbody = document.getElementById('viewMedicamentosBody');
         tbody.innerHTML = '';
@@ -151,6 +175,11 @@
         }
 
         openModal('modalVerPrescripcion');
+    }
+
+    function despacharEnPOS() {
+        if (!currentPrescripcionId) return;
+        window.location.href = '${pageContext.request.contextPath}/ventas?mode=pos&fromPrescripcion=' + currentPrescripcionId;
     }
 </script>
 

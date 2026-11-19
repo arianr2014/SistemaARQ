@@ -7,6 +7,33 @@
     <jsp:param name="active" value="pos" />
 </jsp:include>
 
+<c:if test="${not empty prescripcionPreload}">
+    <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #10b981; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="background: #10b981; color: white; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                <i class="fa-solid fa-file-prescription"></i>
+            </div>
+            <div>
+                <div style="font-weight: 700; color: #065f46; font-size: 15px;">
+                    Despacho de Receta Médica: 
+                    <span style="background: #047857; color: white; padding: 2px 8px; border-radius: 4px; font-size: 13px;">
+                        ${empty prescripcionPreload.codigoPrescripcion ? ('PRES-00' += prescripcionPreload.idPrescripcion) : prescripcionPreload.codigoPrescripcion}
+                    </span>
+                </div>
+                <div style="font-size: 13px; color: #047857; margin-top: 2px;">
+                    <strong>Paciente:</strong> ${prescripcionPreload.nombrePaciente} (DNI: ${prescripcionPreload.dniPaciente}) &nbsp;|&nbsp; 
+                    <strong>Médico:</strong> ${prescripcionPreload.nombreMedico} (${prescripcionPreload.numeroColegiaturaMedico})
+                </div>
+            </div>
+        </div>
+        <div>
+            <span class="badge badge-success" style="font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-check"></i> Medicamentos Precargados en Carrito
+            </span>
+        </div>
+    </div>
+</c:if>
+
 <div class="pos-container">
     <!-- Catalog Section -->
     <div class="pos-catalog">
@@ -98,6 +125,79 @@
 <script>
     let cart = [];
     const csrfToken = "${sessionScope.csrfToken}";
+
+    const preloadPrescripcionId = ${not empty prescripcionPreload ? prescripcionPreload.idPrescripcion : 'null'};
+    const preloadDni = "${not empty prescripcionPreload ? prescripcionPreload.dniPaciente : ''}";
+    const preloadNombre = "${not empty prescripcionPreload ? prescripcionPreload.nombrePaciente : ''}";
+    const preloadDetalles = [
+        <c:forEach items="${prescripcionPreload.detalles}" var="d" varStatus="loop">
+        {
+            idMedicamento: "${d.idMedicamento}",
+            nombreMedicamento: "${d.nombreMedicamento}",
+            cantidad: ${d.cantidad > 0 ? d.cantidad : 1}
+        }${!loop.last ? ',' : ''}
+        </c:forEach>
+    ];
+
+    const availableLotes = [
+        <c:forEach items="${lotes}" var="l" varStatus="loop">
+            <c:if test="${l.cantidadActual > 0}">
+            {
+                idLote: "${l.idLote}",
+                idMedicamento: "${l.idMedicamento}",
+                nombre: "${l.nombreMedicamento}",
+                numLote: "${l.numeroLote}",
+                precio: ${l.precioCompra * 1.3},
+                maxStock: ${l.cantidadActual}
+            }${!loop.last ? ',' : ''}
+            </c:if>
+        </c:forEach>
+    ];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (preloadPrescripcionId) {
+            if (preloadDni) {
+                const dniInput = document.getElementById('dniCliente');
+                if (dniInput) dniInput.value = preloadDni;
+            }
+            if (preloadNombre) {
+                const nomInput = document.getElementById('nombreCliente');
+                if (nomInput) nomInput.value = preloadNombre;
+            }
+
+            if (preloadDetalles && preloadDetalles.length > 0) {
+                preloadDetalles.forEach(function(det) {
+                    let detName = (det.nombreMedicamento || '').toLowerCase().trim();
+                    let matchedLote = availableLotes.find(function(l) {
+                        if (det.idMedicamento && det.idMedicamento !== 'null' && det.idMedicamento !== '' && det.idMedicamento !== '0' && det.idMedicamento === l.idMedicamento) {
+                            return true;
+                        }
+                        let loteName = (l.nombre || '').toLowerCase().trim();
+                        if (loteName === detName) return true;
+                        let firstWord = detName.split(/\s+/)[0];
+                        if (firstWord.length >= 4 && loteName.includes(firstWord)) return true;
+                        return false;
+                    });
+
+                    if (matchedLote) {
+                        let desiredQty = Math.min(det.cantidad, matchedLote.maxStock);
+                        if (desiredQty > 0) {
+                            cart.push({
+                                idLote: matchedLote.idLote,
+                                idMedicamento: matchedLote.idMedicamento,
+                                nombre: matchedLote.nombre,
+                                numLote: matchedLote.numLote,
+                                precioUnitario: parseFloat(matchedLote.precio),
+                                cantidad: desiredQty,
+                                maxStock: matchedLote.maxStock
+                            });
+                        }
+                    }
+                });
+                renderCart();
+            }
+        }
+    });
 
     function addToCart(idLote, idMedicamento, nombre, numLote, precio, maxStock) {
         let item = cart.find(i => i.idLote === idLote);
@@ -230,6 +330,7 @@
         const igv = total - subtotal;
 
         const payload = {
+            idPrescripcion: preloadPrescripcionId || null,
             codigoVenta: generatedCode,
             numeroBoleta: generatedCode,
             tipoComprobante: isFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA ELECTRÓNICA',

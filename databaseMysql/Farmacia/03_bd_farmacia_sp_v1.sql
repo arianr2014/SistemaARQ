@@ -762,6 +762,14 @@ BEGIN
         COALESCE(p_usuario_registro, 'sistema'), NOW(), 'ACTIVO'
     );
 
+    IF p_id_prescripcion IS NOT NULL AND p_id_prescripcion > 0 THEN
+        UPDATE prescripcion 
+        SET estado = 'ATENDIDA',
+            usuario_actualizacion = COALESCE(p_usuario_registro, 'sistema'),
+            fecha_actualizacion = NOW()
+        WHERE id_prescripcion = p_id_prescripcion;
+    END IF;
+
     SELECT LAST_INSERT_ID() AS id_venta;
 END$$
 

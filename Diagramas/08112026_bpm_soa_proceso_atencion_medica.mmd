@@ -1,0 +1,94 @@
+﻿flowchart TD
+    %% Definición de estilos
+    classDef startEnd fill:#00703C,stroke:#0A5C36,stroke-width:2px,color:#fff;
+    classDef userTask fill:#E8F5E9,stroke:#00703C,stroke-width:1.5px,color:#111827;
+    classDef serviceTask fill:#E3F2FD,stroke:#1565C0,stroke-width:1.5px,color:#111827;
+    classDef gateway fill:#FFF3E0,stroke:#E65100,stroke-width:1.5px,color:#111827;
+    classDef errorTask fill:#FFEBEE,stroke:#C62828,stroke-width:1.5px,color:#111827;
+
+    %% Carril 1: Recepción
+    subgraph Lane1 ["🏊 Carril 1: Recepción (Admisión)"]
+        node_start((Inicio: Paciente Solicita Cita)):::startEnd
+        task_reg_paciente["1.1 Registrar / Validar Paciente"]:::userTask
+        task_prog_cita["1.2 Programar Cita Médica\n(Estado: PENDIENTE)"]:::userTask
+    end
+
+    %% Carril 2: Caja
+    subgraph Lane2 ["🏊 Carril 2: Caja (Facturación)"]
+        task_cobro["2.1 Realizar Cobro de Consulta\n(Generar Pago)"]:::userTask
+        task_actualiza_pago["2.2 Marcar Cita como PAGADA\n(Citas API)"]:::serviceTask
+    end
+
+    %% Carril 3: Médico
+    subgraph Lane3 ["🏊 Carril 3: Médico Tratante"]
+        task_iniciar_atencion["3.1 Llamar Paciente e Iniciar Consulta"]:::userTask
+        task_diagnostico["3.2 Registrar Anamnesis y Diagnóstico"]:::userTask
+        task_buscar_med["3.3 Consultar Catálogo Farmacia\n(Búsqueda en Grilla)"]:::userTask
+        task_armar_receta["3.4 Estructurar Receta Médica\n(Dosis, Frecuencia, Cantidad)"]:::userTask
+        task_finalizar["3.5 Guardar y Finalizar Atención"]:::userTask
+        task_alerta_pago["Mostrar Alerta: Cita No Pagada\n(Atención Bloqueada)"]:::errorTask
+        task_exito_medico["Visualizar Resumen y Estado Farmacia\n(ENVIADO / PENDIENTE)"]:::userTask
+    end
+
+    %% Carril 4: Sistema SOA (Orquestador + ESB)
+    subgraph Lane4 ["🏊 Carril 4: Sistema SOA (Orquestador & ESB Camel)"]
+        task_orq_inicio["4.1 Recibir Solicitud de Atención\n(POST /orquestacion/atencion)"]:::serviceTask
+        gw_pago{¿Cita Pagada?}:::gateway
+        task_reg_atencion["4.2 Registrar Atención Clínica\n(Atención API)"]:::serviceTask
+        gw_receta{¿Incluye Receta?}:::gateway
+        task_envio_farmacia["4.3 Transformar y Enviar Prescripción\n(Vía ESB -> Farmacia API)"]:::serviceTask
+        gw_farmacia_resp{¿Farmacia Responde 201/200?}:::gateway
+        task_marca_enviado["4.4 Marcar: ENVIADO_A_FARMACIA\n(atencion_medica)"]:::serviceTask
+        task_marca_pendiente["4.5 Marcar: PENDIENTE_ENVIO_FARMACIA\n(atencion_medica)"]:::serviceTask
+        task_scheduler["4.6 Tarea Programada de Reintentos\n(FarmaciaRetryListener cada 2 min)"]:::serviceTask
+        task_content_enricher["4.7 Content Enricher ESB:\nCitas + Atención -> Receta Enriquecida"]:::serviceTask
+    end
+
+    %% Carril 5: Farmacia
+    subgraph Lane5 ["🏊 Carril 5: Farmacia (Dispensación)"]
+        task_recibe_receta["5.1 Almacenar Prescripción Canónica\n(Estado: PENDIENTE)"]:::serviceTask
+        task_consultar_web["5.2 Listar Recetas en Farmacia Web\n(Vía ESB Enriquecido)"]:::userTask
+        task_verificar_datos["5.3 Validar Paciente, CMP y Diagnóstico"]:::userTask
+        task_dispensar["5.4 Dispensar Medicamentos y Cerrar\n(Estado: ATENDIDA)"]:::userTask
+        node_fin((Fin: Proceso Completado)):::startEnd
+    end
+
+    %% Conexiones entre Carriles
+    node_start --> task_reg_paciente
+    task_reg_paciente --> task_prog_cita
+    task_prog_cita --> task_cobro
+    task_cobro --> task_actualiza_pago
+    task_actualiza_pago --> task_iniciar_atencion
+
+    task_iniciar_atencion --> task_diagnostico
+    task_diagnostico --> task_buscar_med
+    task_buscar_med --> task_armar_receta
+    task_armar_receta --> task_finalizar
+    task_finalizar --> task_orq_inicio
+
+    %% Orquestación SOA
+    task_orq_inicio --> gw_pago
+    gw_pago -- "No (Pendiente)" --> task_alerta_pago
+    gw_pago -- "Sí (PAGADO)" --> task_reg_atencion
+    task_reg_atencion --> gw_receta
+
+    gw_receta -- "No" --> task_exito_medico
+    gw_receta -- "Sí" --> task_envio_farmacia
+
+    task_envio_farmacia --> gw_farmacia_resp
+    gw_farmacia_resp -- "201 / 409 Duplicada" --> task_marca_enviado
+    gw_farmacia_resp -- "503 / Timeout / Caída" --> task_marca_pendiente
+
+    task_marca_enviado --> task_recibe_receta
+    task_recibe_receta --> task_exito_medico
+
+    task_marca_pendiente --> task_exito_medico
+    task_marca_pendiente -.-> task_scheduler
+    task_scheduler -- "Reintento Exitoso" --> task_marca_enviado
+
+    %% Flujo Farmacia
+    task_recibe_receta --> task_consultar_web
+    task_consultar_web --> task_content_enricher
+    task_content_enricher --> task_verificar_datos
+    task_verificar_datos --> task_dispensar
+    task_dispensar --> node_fin

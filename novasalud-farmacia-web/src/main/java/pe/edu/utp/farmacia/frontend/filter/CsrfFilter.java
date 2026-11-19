@@ -23,6 +23,14 @@ public class CsrfFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
+        String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
+
+        // Excluir /login y recursos estáticos para permitir autenticación sin fricción
+        if ("/login".equals(path) || path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/") || path.startsWith("/error/")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         HttpSession session = httpRequest.getSession(true);
         CsrfUtil.getToken(session); // Ensure session has CSRF token
 
